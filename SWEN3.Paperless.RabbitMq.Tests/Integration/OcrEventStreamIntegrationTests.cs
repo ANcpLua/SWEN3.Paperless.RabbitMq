@@ -18,7 +18,7 @@ public class OcrEventStreamIntegrationTests
 
         var responseTask = client.GetAsync("/api/v1/ocr-results", HttpCompletionOption.ResponseHeadersRead,
             TestContext.Current.CancellationToken);
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         sseStream.Publish(ocrEvent);
 
