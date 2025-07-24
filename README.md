@@ -3,7 +3,7 @@
 [![NuGet](https://img.shields.io/nuget/v/SWEN3.Paperless.RabbitMq?label=NuGet&color=0891B2)](https://www.nuget.org/packages/SWEN3.Paperless.RabbitMq/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq/blob/main/LICENSE)
 
-# \.R.Paperless.RabbitMq
+# SWEN3.Paperless.RabbitMq
 
 RabbitMQ messaging library for .NET with SSE support.
 
