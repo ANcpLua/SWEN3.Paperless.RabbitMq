@@ -7,14 +7,15 @@
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <LangVersion>preview</LangVersion>
         <PackageId>SWEN3.Paperless.RabbitMq</PackageId>
-        <Version>1.0.2</Version>
+        <Version>1.0.3</Version>
         <Authors>Alexander Nachtmann</Authors>
-        <projectUrl>https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq</projectUrl>
         <Description>RabbitMQ messaging and SSE support for Paperless</Description>
-        <PackageTags>rabbitmq;sse;messaging;paperless</PackageTags>
+        <PackageTags>rabbitmq;sse;messaging;paperless;net10;preview</PackageTags>
+        <RepositoryUrl>https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq</RepositoryUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <RepositoryUrl>https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq</PackageProjectUrl>
+
 
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <IncludeSymbols>true</IncludeSymbols>

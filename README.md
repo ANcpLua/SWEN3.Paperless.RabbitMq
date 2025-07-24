@@ -9,6 +9,10 @@ RabbitMQ messaging library for .NET with SSE support.
 
 ## Configuration
 
+```csharp
+<EnablePreviewFeatures>true</EnablePreviewFeatures>
+```
+       
 ```json
 {
   "RabbitMQ": {
