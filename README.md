@@ -7,12 +7,6 @@
 
 RabbitMQ messaging library for .NET with SSE support.
 
-## Installation
-
-```bash
-dotnet add package Paperless.RabbitMq
-```
-
 ## Configuration
 
 ```json
@@ -83,6 +77,12 @@ eventSource.addEventListener('ocr-completed', (event) => {
 ```csharp
 public record OcrCommand(Guid JobId, string FileName, string FilePath);
 public record OcrEvent(Guid JobId, string Status, string? Text, DateTimeOffset ProcessedAt);
+```
+
+## Installation
+
+```bash
+dotnet add package SWEN3.Paperless.RabbitMq
 ```
 
 ## License
