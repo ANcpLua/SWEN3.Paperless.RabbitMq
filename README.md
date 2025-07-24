@@ -3,15 +3,9 @@
 [![NuGet](https://img.shields.io/nuget/v/SWEN3.Paperless.RabbitMq?label=NuGet&color=0891B2)](https://www.nuget.org/packages/SWEN3.Paperless.RabbitMq/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq/blob/main/LICENSE)
 
-# SWEN3.Paperless.RabbitMq
+# \.R.Paperless.RabbitMq
 
 RabbitMQ messaging library for .NET with SSE support.
-
-## Installation
-
-```bash
-dotnet add package Paperless.RabbitMq
-```
 
 ## Configuration
 
@@ -83,6 +77,12 @@ eventSource.addEventListener('ocr-completed', (event) => {
 ```csharp
 public record OcrCommand(Guid JobId, string FileName, string FilePath);
 public record OcrEvent(Guid JobId, string Status, string? Text, DateTimeOffset ProcessedAt);
+```
+
+## Installation
+
+```bash
+dotnet add package SWEN3.Paperless.RabbitMq
 ```
 
 ## License
