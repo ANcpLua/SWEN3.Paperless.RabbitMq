@@ -5,7 +5,7 @@
 
 # SWEN3.Paperless.RabbitMq
 
-RabbitMQ messaging library for .NET with SSE support.
+RabbitMQ messaging library for .NET with SSE support and AI-powered document summarization.
 
 ## Configuration
 
@@ -30,7 +30,7 @@ RabbitMQ messaging library for .NET with SSE support.
 builder.Services.AddPaperlessRabbitMq(builder.Configuration);
 
 // With SSE support
-builder.Services.AddPaperlessRabbitMq(configuration, includeOcrResultStream: true);
+services.AddPaperlessRabbitMq(config, includeOcrResultStream: true, includeGenAiResultStream: true);
 ```
 
 ### Publishing
@@ -76,11 +76,37 @@ eventSource.addEventListener('ocr-completed', (event) => {
 });
 ```
 
+ ### GenAI Support (v1.0.4+)
+
+  ```csharp
+  // Enable GenAI features
+  builder.Services.AddPaperlessRabbitMq(configuration,
+      includeOcrResultStream: true,
+      includeGenAiResultStream: true);
+
+  // Configure Gemini
+  builder.Services.Configure<GeminiOptions>(configuration.GetSection("Gemini"));
+  builder.Services.AddHttpClient<ITextSummarizer, GeminiService>();
+  builder.Services.AddHostedService<GenAIWorker>();
+
+  // Publish GenAI command
+var genAiCommand = new GenAICommand(request.JobId, result.Text!);
+await _publisher.PublishGenAICommandAsync(genAiCommand);
+  {
+    "Gemini": {
+      "ApiKey": "your-api-key",
+      "Model": "gemini-2.0-flash"
+    }
+  }
+```
+
 ## Message Types
 
 ```csharp
 public record OcrCommand(Guid JobId, string FileName, string FilePath);
 public record OcrEvent(Guid JobId, string Status, string? Text, DateTimeOffset ProcessedAt);
+public record GenAICommand(Guid DocumentId, string Text);
+public record GenAIEvent(Guid DocumentId, string? Summary, DateTimeOffset ProcessedAt, string? ErrorMessage = null);
 ```
 
 ## Installation
