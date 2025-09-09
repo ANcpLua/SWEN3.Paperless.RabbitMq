@@ -65,8 +65,9 @@ public class RabbitMqConsumerTests
 
         await consumer.NackAsync();
 
-        _channelMock.Verify(c => c.BasicNackAsync(It.IsAny<ulong>(), It.IsAny<bool>(), It.IsAny<bool>(),
-            It.IsAny<CancellationToken>()), Times.Never);
+        _channelMock.Verify(
+            c => c.BasicNackAsync(It.IsAny<ulong>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

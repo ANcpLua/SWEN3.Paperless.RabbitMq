@@ -31,4 +31,24 @@ public static class RabbitMqSchema
     ///     Routing key for OCR events.
     /// </summary>
     public const string OcrEventRouting = "ocr.event";
+
+    /// <summary>
+    ///     Queue for GenAI processing commands.
+    /// </summary>
+    public const string GenAICommandQueue = "GenAICommandQueue";
+
+    /// <summary>
+    ///     Routing key for GenAI commands.
+    /// </summary>
+    public const string GenAICommandRouting = "genai.command";
+
+    /// <summary>
+    ///     Queue for GenAI processing result events.
+    /// </summary>
+    public const string GenAIEventQueue = "GenAIEventQueue";
+
+    /// <summary>
+    ///     Routing key for GenAI events.
+    /// </summary>
+    public const string GenAIEventRouting = "genai.event";
 }

@@ -10,12 +10,10 @@ public class RabbitMqConsumerIntegrationTests : IAsyncLifetime
         await _container.StartAsync();
 
         var services = new ServiceCollection();
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["RabbitMQ:Uri"] = _container.GetConnectionString()
-            })
-            .Build();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["RabbitMQ:Uri"] = _container.GetConnectionString()
+        }).Build();
 
         services.AddPaperlessRabbitMq(configuration);
         services.AddLogging();
@@ -128,7 +126,7 @@ public class RabbitMqConsumerIntegrationTests : IAsyncLifetime
     {
         var factory = _serviceProvider.GetRequiredService<IRabbitMqConsumerFactory>();
         var consumer = await factory.CreateConsumerAsync<Messages.SimpleMessage>();
-    
+
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
@@ -147,12 +145,13 @@ public class RabbitMqConsumerIntegrationTests : IAsyncLifetime
         var factory = _serviceProvider.GetRequiredService<IRabbitMqConsumerFactory>();
         var connection = _serviceProvider.GetRequiredService<IConnection>();
 
-        await using (var channel = await connection.CreateChannelAsync(cancellationToken: TestContext.Current.CancellationToken))
+        await using (var channel =
+                     await connection.CreateChannelAsync(cancellationToken: TestContext.Current.CancellationToken))
         {
             await channel.QueueDeclareAsync("SimpleMessageQueue", true, false, false,
                 cancellationToken: TestContext.Current.CancellationToken);
             await channel.QueuePurgeAsync("SimpleMessageQueue", TestContext.Current.CancellationToken);
-        
+
             var message = JsonSerializer.Serialize(new Messages.SimpleMessage(1));
             await channel.BasicPublishAsync("", "SimpleMessageQueue", Encoding.UTF8.GetBytes(message),
                 TestContext.Current.CancellationToken);
@@ -165,7 +164,7 @@ public class RabbitMqConsumerIntegrationTests : IAsyncLifetime
         await enumerator.MoveNextAsync();
 
         await cts.CancelAsync();
-    
+
         await enumerator.DisposeAsync();
         await consumer.DisposeAsync();
     }

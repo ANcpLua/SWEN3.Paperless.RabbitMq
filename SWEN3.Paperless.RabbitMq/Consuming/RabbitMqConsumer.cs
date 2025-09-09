@@ -63,16 +63,14 @@ internal class RabbitMqConsumer<T> : IRabbitMqConsumer<T> where T : class
         await _channel.DisposeAsync();
     }
 
-    internal async Task ProcessMessageAsync(
-        BasicDeliverEventArgs ea,
-        ChannelWriter<(T message, ulong deliveryTag)> writer,
-        CancellationToken cancellationToken)
+    internal async Task ProcessMessageAsync(BasicDeliverEventArgs ea,
+        ChannelWriter<(T message, ulong deliveryTag)> writer, CancellationToken cancellationToken)
     {
         try
         {
             var message = JsonSerializer.Deserialize<T>(ea.Body.Span, RabbitMqJsonOptions.Options);
 
-            if (message != null) await writer.WriteAsync((message, ea.DeliveryTag), cancellationToken);
+            if (message is not null) await writer.WriteAsync((message, ea.DeliveryTag), cancellationToken);
         }
         catch
         {

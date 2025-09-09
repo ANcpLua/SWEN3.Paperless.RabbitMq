@@ -8,12 +8,10 @@ public class RabbitMqExtensionsTests : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         await _container.StartAsync();
-        _configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["RabbitMQ:Uri"] = _container.GetConnectionString()
-            })
-            .Build();
+        _configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["RabbitMQ:Uri"] = _container.GetConnectionString()
+        }).Build();
     }
 
     public async ValueTask DisposeAsync()
@@ -44,8 +42,7 @@ public class RabbitMqExtensionsTests : IAsyncLifetime
 
         var act = () => services.AddPaperlessRabbitMq(emptyConfig);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Configuration value 'RabbitMQ:Uri' is missing");
+        act.Should().Throw<InvalidOperationException>().WithMessage("Configuration value 'RabbitMQ:Uri' is missing");
     }
 
     [Fact]
@@ -68,14 +65,36 @@ public class RabbitMqExtensionsTests : IAsyncLifetime
         services.AddLogging();
 
         var provider = services.BuildServiceProvider();
-        var hostedService = provider.GetServices<IHostedService>()
-            .OfType<RabbitMqTopologySetup>()
-            .First();
+        var hostedService = provider.GetServices<IHostedService>().OfType<RabbitMqTopologySetup>().First();
 
         await hostedService.StartAsync(CancellationToken.None);
         await hostedService.StopAsync(CancellationToken.None);
 
         var connection = provider.GetRequiredService<IConnection>();
         connection.IsOpen.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddPaperlessRabbitMq_WithOcrStreamEnabled_RegistersSseStream()
+    {
+        var services = new ServiceCollection();
+
+        services.AddPaperlessRabbitMq(_configuration, true);
+
+        var provider = services.BuildServiceProvider();
+        var sseStream = provider.GetService<ISseStream<OcrEvent>>();
+        sseStream.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void AddPaperlessRabbitMq_WithGenAiStreamEnabled_RegistersSseStream()
+    {
+        var services = new ServiceCollection();
+
+        services.AddPaperlessRabbitMq(_configuration, includeGenAiResultStream: true);
+
+        var provider = services.BuildServiceProvider();
+        var sseStream = provider.GetService<ISseStream<GenAIEvent>>();
+        sseStream.Should().NotBeNull();
     }
 }

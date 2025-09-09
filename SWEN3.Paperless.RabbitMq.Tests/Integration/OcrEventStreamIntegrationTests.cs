@@ -1,6 +1,6 @@
 namespace SWEN3.Paperless.RabbitMq.Tests.Integration;
 
-public class OcrEventStreamIntegrationTests
+public sealed class OcrEventStreamIntegrationTests
 {
     [Theory]
     [InlineData("Completed", "ocr-completed")]
@@ -9,26 +9,29 @@ public class OcrEventStreamIntegrationTests
     public async Task MapOcrEventStream_ShouldEmitCorrectEventType(string status, string expectedEventType)
     {
         var sseStream = new SseStream<OcrEvent>();
+        var server = SseTestHelpers.CreateSseTestServer(sseStream, endpoints => endpoints.MapOcrEventStream());
+
+        var readTask = Task.Run(async () =>
+        {
+            using var client = server.CreateClient();
+            var response = await client.GetAsync("/api/v1/ocr-results", HttpCompletionOption.ResponseHeadersRead);
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+
+            var line = await reader.ReadLineAsync();
+            response.Dispose();
+            return line;
+        });
+
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+
         var ocrEvent = new OcrEvent(Guid.NewGuid(), status, status is "Completed" ? "Text" : null,
             DateTimeOffset.UtcNow);
-
-        using var server = TestServerFactory.CreateSseTestServer(sseStream,
-            endpoints => endpoints.MapOcrEventStream());
-        using var client = server.CreateClient();
-
-        var responseTask = client.GetAsync("/api/v1/ocr-results", HttpCompletionOption.ResponseHeadersRead,
-            TestContext.Current.CancellationToken);
-        await Task.Delay(100, TestContext.Current.CancellationToken);
-
         sseStream.Publish(ocrEvent);
 
-        var response = await responseTask;
-        await using var stream = await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
-        using var reader = new StreamReader(stream, Encoding.UTF8);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var eventLine = await readTask.WaitAsync(cts.Token);
 
-        var eventLine = await reader.ReadLineAsync(TestContext.Current.CancellationToken);
         eventLine.Should().Be($"event: {expectedEventType}");
-
-        response.Dispose();
     }
 }

@@ -44,11 +44,8 @@ public static class SseExtensions
     ///     The endpoint automatically manages client subscriptions and handles disconnections.
     ///     Events are streamed as JSON-serialized payloads with custom event types.
     /// </remarks>
-    internal static RouteHandlerBuilder MapSse<T>(
-        this IEndpointRouteBuilder endpoints,
-        string pattern,
-        Func<T, object> payloadSelector,
-        Func<T, string> eventTypeSelector) where T : class
+    public static RouteHandlerBuilder MapSse<T>(this IEndpointRouteBuilder endpoints, string pattern,
+        Func<T, object> payloadSelector, Func<T, string> eventTypeSelector) where T : class
     {
         return endpoints.MapGet(pattern, (ISseStream<T> stream, HttpContext context) =>
         {

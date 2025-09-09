@@ -7,7 +7,7 @@
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <LangVersion>preview</LangVersion>
         <PackageId>SWEN3.Paperless.RabbitMq</PackageId>
-        <Version>1.0.3</Version>
+        <Version>1.0.4</Version>
         <Authors>Alexander Nachtmann</Authors>
         <Description>RabbitMQ messaging and SSE support for Paperless</Description>
         <PackageTags>rabbitmq;sse;messaging;paperless;net10;preview</PackageTags>
@@ -16,17 +16,17 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageProjectUrl>https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq</PackageProjectUrl>
 
-
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+       <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <DebugType>portable</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Polly" Version="8.6.3" />
         <PackageReference Include="RabbitMQ.Client" Version="7.1.2"/>
     </ItemGroup>
 

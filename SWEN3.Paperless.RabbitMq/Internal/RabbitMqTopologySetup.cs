@@ -22,37 +22,32 @@ internal class RabbitMqTopologySetup : IHostedService
 
         await using var channel = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
 
-        await channel.ExchangeDeclareAsync(
-            RabbitMqSchema.Exchange,
-            ExchangeType.Topic,
-            true,
+        await channel.ExchangeDeclareAsync(RabbitMqSchema.Exchange, ExchangeType.Topic, true,
             cancellationToken: cancellationToken);
 
-        await channel.QueueDeclareAsync(
-            RabbitMqSchema.OcrCommandQueue,
-            true,
-            false,
-            false,
+        await channel.QueueDeclareAsync(RabbitMqSchema.OcrCommandQueue, true, false, false,
             cancellationToken: cancellationToken);
 
-        await channel.QueueDeclareAsync(
-            RabbitMqSchema.OcrEventQueue,
-            true,
-            false,
-            false,
+        await channel.QueueDeclareAsync(RabbitMqSchema.OcrEventQueue, true, false, false,
             cancellationToken: cancellationToken);
 
-        await channel.QueueBindAsync(
-            RabbitMqSchema.OcrCommandQueue,
-            RabbitMqSchema.Exchange,
-            RabbitMqSchema.OcrCommandRouting,
+        await channel.QueueDeclareAsync(RabbitMqSchema.GenAICommandQueue, true, false, false,
             cancellationToken: cancellationToken);
 
-        await channel.QueueBindAsync(
-            RabbitMqSchema.OcrEventQueue,
-            RabbitMqSchema.Exchange,
-            RabbitMqSchema.OcrEventRouting,
+        await channel.QueueDeclareAsync(RabbitMqSchema.GenAIEventQueue, true, false, false,
             cancellationToken: cancellationToken);
+
+        await channel.QueueBindAsync(RabbitMqSchema.OcrCommandQueue, RabbitMqSchema.Exchange,
+            RabbitMqSchema.OcrCommandRouting, cancellationToken: cancellationToken);
+
+        await channel.QueueBindAsync(RabbitMqSchema.OcrEventQueue, RabbitMqSchema.Exchange,
+            RabbitMqSchema.OcrEventRouting, cancellationToken: cancellationToken);
+
+        await channel.QueueBindAsync(RabbitMqSchema.GenAICommandQueue, RabbitMqSchema.Exchange,
+            RabbitMqSchema.GenAICommandRouting, cancellationToken: cancellationToken);
+
+        await channel.QueueBindAsync(RabbitMqSchema.GenAIEventQueue, RabbitMqSchema.Exchange,
+            RabbitMqSchema.GenAIEventRouting, cancellationToken: cancellationToken);
 
         _logger.LogInformation("RabbitMQ topology setup completed");
     }

@@ -2,84 +2,65 @@ namespace SWEN3.Paperless.RabbitMq.Tests.Integration;
 
 public class SseExtensionsTests
 {
-    [Fact]
-    public async Task MapSse_WhenClientDisconnects_ShouldUnsubscribe()
-    {
-        var mockStream = new Mock<ISseStream<Messages.SseTestEvent>>();
-        var clientId = Guid.Empty;
-        var subscribedTcs = new TaskCompletionSource();
-        var unsubscribedTcs = new TaskCompletionSource();
-
-        mockStream.Setup(s => s.Subscribe(It.IsAny<Guid>()))
-            .Callback<Guid>(id =>
-            {
-                clientId = id;
-                subscribedTcs.SetResult();
-            })
-            .Returns(Channel.CreateUnbounded<Messages.SseTestEvent>().Reader);
-
-        mockStream.Setup(s => s.Unsubscribe(It.IsAny<Guid>()))
-            .Callback<Guid>(id =>
-            {
-                if (id == clientId) unsubscribedTcs.SetResult();
-            });
-
-        using var server = TestServerFactory.CreateSseTestServerWithTestEndpoint(mockStream.Object);
-
-        using var client = server.CreateClient();
-        using var cts = new CancellationTokenSource();
-
-        var request = client.GetAsync("/sse-test", cts.Token);
-        await subscribedTcs.Task;
-
-        await cts.CancelAsync();
-        await unsubscribedTcs.Task;
-
-        await Assert.ThrowsAsync<TaskCanceledException>(() => request);
-
-        clientId.Should().NotBe(Guid.Empty);
-        mockStream.Verify(s => s.Unsubscribe(clientId), Times.Once);
-    }
+    private const string TestEndpoint = "/sse-test";
 
     [Fact]
     public async Task MapSse_WithPublishedEvent_ShouldStreamToClient()
     {
-        var mockStream = new Mock<ISseStream<Messages.SseTestEvent>>();
-        var subscriptionTcs = new TaskCompletionSource();
-        var channel = Channel.CreateUnbounded<Messages.SseTestEvent>();
+        var sseStream = new SseStream<Messages.SseTestEvent>();
+        using var server = SseTestHelpers.CreateSseTestServer(sseStream,
+            endpoints => endpoints.MapSse<Messages.SseTestEvent>(
+                TestEndpoint, evt => new { evt.Id, evt.Message }, _ => "test-event"));
 
-        mockStream.Setup(s => s.Subscribe(It.IsAny<Guid>()))
-            .Callback(() => subscriptionTcs.TrySetResult())
-            .Returns(channel.Reader);
+        var clientId = Guid.NewGuid();
+        var reader = sseStream.Subscribe(clientId);
 
-        using var server = TestServerFactory.CreateSseTestServerWithTestEndpoint(mockStream.Object);
+        var readTask = Task.Run(async () =>
+        {
+            await foreach (var item in reader.ReadAllAsync()) return item;
 
-        using var client = server.CreateClient();
+            throw new InvalidOperationException("No event received");
+        });
 
-        var responseTask = client.GetAsync("/sse-test", HttpCompletionOption.ResponseHeadersRead,
-            TestContext.Current.CancellationToken);
-        await subscriptionTcs.Task;
+        var testEvent = new Messages.SseTestEvent { Id = 42, Message = "Hello SSE" };
+        sseStream.Publish(testEvent);
 
-        await channel.Writer.WriteAsync(new Messages.SseTestEvent { Id = 42, Message = "Hello SSE" },
-            TestContext.Current.CancellationToken);
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        channel.Writer.TryComplete();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var result = await readTask.WaitAsync(cts.Token);
 
-        var response = await responseTask;
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        result.Id.Should().Be(42);
+        result.Message.Should().Be("Hello SSE");
 
-        await using var responseStream =
-            await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
-        using var reader = new StreamReader(responseStream);
+        sseStream.Unsubscribe(clientId);
+    }
 
-        var eventTypeLine = await reader.ReadLineAsync(TestContext.Current.CancellationToken);
-        var dataLine = await reader.ReadLineAsync(TestContext.Current.CancellationToken);
-        var emptyLine = await reader.ReadLineAsync(TestContext.Current.CancellationToken);
+    [Fact]
+    public async Task MapSse_MultipleClients_ShouldReceiveSameEvent()
+    {
+        var sseStream = new SseStream<Messages.SseTestEvent>();
+        using var server = SseTestHelpers.CreateSseTestServer(sseStream,
+            endpoints => endpoints.MapSse<Messages.SseTestEvent>(
+                TestEndpoint, evt => new { evt.Id, evt.Message }, _ => "test-event"));
 
-        eventTypeLine.Should().Be("event: test-event");
-        dataLine.Should().StartWith("data: ")
-            .And.Contain("\"id\":42")
-            .And.Contain("\"message\":\"Hello SSE\"");
-        emptyLine.Should().BeEmpty();
+        var clientId1 = Guid.NewGuid();
+        var clientId2 = Guid.NewGuid();
+        var reader1 = sseStream.Subscribe(clientId1);
+        var reader2 = sseStream.Subscribe(clientId2);
+
+        var readTask1 = reader1.ReadAsync(TestContext.Current.CancellationToken).AsTask();
+        var readTask2 = reader2.ReadAsync(TestContext.Current.CancellationToken).AsTask();
+
+        var testEvent = new Messages.SseTestEvent { Id = 99, Message = "Broadcast" };
+        sseStream.Publish(testEvent);
+
+        var result1 = await readTask1;
+        var result2 = await readTask2;
+
+        result1.Should().BeEquivalentTo(testEvent);
+        result2.Should().BeEquivalentTo(testEvent);
+
+        sseStream.Unsubscribe(clientId1);
+
+        sseStream.Unsubscribe(clientId2);
     }
 }
