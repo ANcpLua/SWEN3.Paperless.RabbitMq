@@ -1,5 +1,5 @@
 [![codecov](https://codecov.io/gh/ANcpLua/SWEN3.Paperless.RabbitMq/branch/main/graph/badge.svg?token=lgxIXBnFrn)](https://codecov.io/gh/ANcpLua/SWEN3.Paperless.RabbitMq)
-[![.NET 10](https://img.shields.io/badge/.NET-10.0_Preview-7C3AED)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![.NET 10](https://img.shields.io/badge/.NET-10.0-7C3AED)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![NuGet](https://img.shields.io/nuget/v/SWEN3.Paperless.RabbitMq?label=NuGet&color=0891B2)](https://www.nuget.org/packages/SWEN3.Paperless.RabbitMq/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq/blob/main/LICENSE)
 
@@ -9,10 +9,6 @@ RabbitMQ messaging library for .NET with SSE support and AI-powered document sum
 
 ## Configuration
 
-```csharp
-<EnablePreviewFeatures>true</EnablePreviewFeatures>
-```
-       
 ```json
 {
   "RabbitMQ": {
