@@ -3,6 +3,10 @@
 [![NuGet](https://img.shields.io/nuget/v/SWEN3.Paperless.RabbitMq?label=NuGet&color=0891B2)](https://www.nuget.org/packages/SWEN3.Paperless.RabbitMq/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq/blob/main/LICENSE)
 
+[![Star this repo](https://img.shields.io/github/stars/ANcpLua/SWEN3.Paperless.RabbitMq?style=social)](https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq/stargazers)
+
+**Star if this works for you** — helps others find it.
+
 # SWEN3.Paperless.RabbitMq
 
 RabbitMQ messaging library for .NET with SSE support and AI-powered document summarization.
