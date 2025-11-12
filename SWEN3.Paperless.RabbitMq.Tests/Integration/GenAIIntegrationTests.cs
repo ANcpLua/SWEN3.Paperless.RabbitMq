@@ -47,12 +47,11 @@ public class GenAIIntegrationTests : IAsyncLifetime
 
         GenAIEvent? receivedEvent = null;
         await using var consumer = await ConsumerFactory.CreateConsumerAsync<GenAIEvent>();
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await foreach (var message in consumer.ConsumeAsync(cts.Token))
+        await using var enumerator = consumer.ConsumeAsync(TestContext.Current.CancellationToken).GetAsyncEnumerator(TestContext.Current.CancellationToken);
+        if (await enumerator.MoveNextAsync())
         {
-            receivedEvent = message;
+            receivedEvent = enumerator.Current;
             await consumer.AckAsync();
-            break;
         }
 
         receivedEvent.Should().NotBeNull();
@@ -72,12 +71,11 @@ public class GenAIIntegrationTests : IAsyncLifetime
 
         GenAIEvent? receivedEvent = null;
         await using var consumer = await ConsumerFactory.CreateConsumerAsync<GenAIEvent>();
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await foreach (var message in consumer.ConsumeAsync(cts.Token))
+        await using var enumerator = consumer.ConsumeAsync(TestContext.Current.CancellationToken).GetAsyncEnumerator(TestContext.Current.CancellationToken);
+        if (await enumerator.MoveNextAsync())
         {
-            receivedEvent = message;
+            receivedEvent = enumerator.Current;
             await consumer.AckAsync();
-            break;
         }
 
         receivedEvent.Should().NotBeNull();
@@ -97,9 +95,7 @@ public class GenAIIntegrationTests : IAsyncLifetime
             await Publisher.PublishGenAIEventAsync(evt);
 
         var receivedEvents = new List<GenAIEvent>();
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        cts.CancelAfter(TimeSpan.FromSeconds(10));
-        await foreach (var message in consumer.ConsumeAsync(cts.Token))
+        await foreach (var message in consumer.ConsumeAsync(TestContext.Current.CancellationToken))
         {
             receivedEvents.Add(message);
             await consumer.AckAsync();
@@ -133,23 +129,21 @@ public class GenAIIntegrationTests : IAsyncLifetime
 
         await using (var consumer1 = await ConsumerFactory.CreateConsumerAsync<GenAIEvent>())
         {
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            await foreach (var _ in consumer1.ConsumeAsync(cts.Token))
+            await using var enumerator1 = consumer1.ConsumeAsync(TestContext.Current.CancellationToken).GetAsyncEnumerator(TestContext.Current.CancellationToken);
+            if (await enumerator1.MoveNextAsync())
             {
                 await consumer1.NackAsync();
-                break;
             }
         }
 
         GenAIEvent? redeliveredEvent = null;
         await using (var consumer2 = await ConsumerFactory.CreateConsumerAsync<GenAIEvent>())
         {
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            await foreach (var message in consumer2.ConsumeAsync(cts.Token))
+            await using var enumerator2 = consumer2.ConsumeAsync(TestContext.Current.CancellationToken).GetAsyncEnumerator(TestContext.Current.CancellationToken);
+            if (await enumerator2.MoveNextAsync())
             {
-                redeliveredEvent = message;
+                redeliveredEvent = enumerator2.Current;
                 await consumer2.AckAsync();
-                break;
             }
         }
 
