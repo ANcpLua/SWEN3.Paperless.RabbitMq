@@ -1,9 +1,7 @@
-using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Polly;
 
 namespace SWEN3.Paperless.RabbitMq.GenAI;
 
@@ -13,47 +11,27 @@ namespace SWEN3.Paperless.RabbitMq.GenAI;
 ///     <para>Integrates with Google's Generative Language API using the Gemini 2.0 Flash model by default.</para>
 /// </summary>
 /// <remarks>
-///     This service handles:
-///     <list type="bullet">
-///         <item>HTTP request/response processing with configurable timeouts</item>
-///         <item>Exponential backoff retry policy for transient failures</item>
-///         <item>JSON response parsing and content extraction</item>
-///         <item>Graceful error handling for API rate limits and service unavailability</item>
-///     </list>
+///     Resilience (retries, circuit breaker, timeouts) is handled automatically by
+///     Microsoft.Extensions.Http.Resilience via AddStandardResilienceHandler.
 /// </remarks>
 public sealed class GeminiService : ITextSummarizer
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GeminiService> _logger;
     private readonly GeminiOptions _options;
-    private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="GeminiService"/> class.
     /// </summary>
-    /// <param name="httpClient">The HTTP client for making API requests to the Gemini service.</param>
-    /// <param name="options">Configuration options containing API key, model selection, and retry settings.</param>
+    /// <param name="httpClient">The HTTP client for making API requests (configured with resilience handlers).</param>
+    /// <param name="options">Configuration options containing API key, model selection, and timeout settings.</param>
     /// <param name="logger">Logger instance for diagnostic output and error tracking.</param>
-    /// <remarks>
-    ///     The constructor configures the HTTP client timeout and initializes a Polly retry policy
-    ///     with exponential backoff for handling transient failures and rate limiting.
-    /// </remarks>
     public GeminiService(HttpClient httpClient, IOptions<GeminiOptions> options, ILogger<GeminiService> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
         _options = options.Value;
-
         _httpClient.Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
-
-        _retryPolicy = Policy<HttpResponseMessage>.Handle<HttpRequestException>()
-            .OrResult(resp => (int)resp.StatusCode >= 500 || resp.StatusCode == HttpStatusCode.RequestTimeout ||
-                              resp.StatusCode == HttpStatusCode.TooManyRequests).WaitAndRetryAsync(_options.MaxRetries,
-                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                (_, timespan, retryCount, _) =>
-                {
-                    _logger.LogWarning("Gemini retry {Count} after {Delay}s", retryCount, timespan.TotalSeconds);
-                });
     }
 
     /// <summary>
@@ -66,10 +44,6 @@ public sealed class GeminiService : ITextSummarizer
     ///     A structured summary containing key insights from the document, or <c>null</c> if the API call fails,
     ///     times out, or the input text is invalid.
     /// </returns>
-    /// <remarks>
-    ///     The method implements automatic retry with exponential backoff for transient failures.
-    ///     Logs warnings for retry attempts and errors for permanent failures.
-    /// </remarks>
     public async Task<string?> SummarizeAsync(string text, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -80,32 +54,27 @@ public sealed class GeminiService : ITextSummarizer
 
         var prompt = BuildPrompt(text);
         var body = BuildRequestBody(prompt);
-        var url =
-            $"https://generativelanguage.googleapis.com/v1beta/models/{_options.Model}:generateContent?key={_options.ApiKey}";
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_options.Model}:generateContent?key={_options.ApiKey}";
 
-        HttpResponseMessage response;
         try
         {
-            response = await _retryPolicy.ExecuteAsync(async () =>
+            using var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
             {
-                using var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-                return await _httpClient.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
-            }).ConfigureAwait(false);
+                _logger.LogError("Gemini API responded {StatusCode}: {Reason}", response.StatusCode, response.ReasonPhrase);
+                return null;
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return ExtractSummary(responseContent);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
-            _logger.LogError(ex, "Gemini API call failed after {MaxRetries} retries", _options.MaxRetries);
+            _logger.LogError(ex, "Gemini API call failed");
             return null;
         }
-
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogError("Gemini API responded {StatusCode}: {Reason}", response.StatusCode, response.ReasonPhrase);
-            return null;
-        }
-
-        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return ExtractSummary(responseContent);
     }
 
     private static string BuildPrompt(string text)
