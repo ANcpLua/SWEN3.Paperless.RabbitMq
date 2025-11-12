@@ -6,10 +6,10 @@
         <Nullable>enable</Nullable>
         <LangVersion>latestMajor</LangVersion>
         <PackageId>SWEN3.Paperless.RabbitMq</PackageId>
-        <Version>2.0.1</Version>
+        <Version>2.0.2</Version>
         <Authors>Alexander Nachtmann</Authors>
-        <Description>RabbitMQ messaging and SSE support for Paperless</Description>
-        <PackageTags>rabbitmq;sse;messaging;paperless;net10</PackageTags>
+        <Description>RabbitMQ messaging library with Server-Sent Events (SSE) streaming and AI-powered document summarization via Google Gemini for Paperless applications</Description>
+        <PackageTags>rabbitmq;rabbit;messaging;queue;sse;server-sent-events;streaming;stream;events;paperless;ai;genai;gemini;google;document;summarization;net10;dotnet</PackageTags>
         <RepositoryUrl>https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq</RepositoryUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -25,7 +25,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AwesomeAssertions" Version="9.3.0" />
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
         <PackageReference Include="RabbitMQ.Client" Version="7.2.0"/>
     </ItemGroup>

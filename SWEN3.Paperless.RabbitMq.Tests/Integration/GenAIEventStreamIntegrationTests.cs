@@ -40,7 +40,7 @@ public class GenAIEventStreamIntegrationTests
     {
         var sseStream = new SseStream<GenAIEvent>();
         using var server = SseTestHelpers.CreateSseTestServer(sseStream, endpoints => endpoints.MapGenAIEventStream());
-        
+
         var client = server.CreateClient();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var token = cts.Token;
@@ -77,10 +77,10 @@ public class GenAIEventStreamIntegrationTests
             {
                 var eventLine = await reader.ReadLineAsync(cancellationToken);
                 var dataLine = await reader.ReadLineAsync(cancellationToken);
-                
+
                 if (eventLine == null || dataLine == null)
                     throw new InvalidOperationException($"Unexpected end of stream while reading event {i + 1} of {count}");
-                
+
                 events.Add((eventLine, dataLine));
                 await reader.ReadLineAsync(cancellationToken);
             }
