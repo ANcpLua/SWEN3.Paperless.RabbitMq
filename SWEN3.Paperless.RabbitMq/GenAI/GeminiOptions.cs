@@ -12,6 +12,11 @@ namespace SWEN3.Paperless.RabbitMq.GenAI;
 public sealed class GeminiOptions
 {
     /// <summary>
+    ///     Configuration section name for Gemini options.
+    /// </summary>
+    public const string SectionName = "Gemini";
+
+    /// <summary>
     ///     Gets or initializes the API key for authenticating with the Gemini API.
     /// </summary>
     /// <value>
@@ -33,27 +38,13 @@ public sealed class GeminiOptions
     public string Model { get; init; } = "gemini-2.0-flash";
 
     /// <summary>
-    ///     Gets or initializes the maximum number of retry attempts for failed API calls.
-    /// </summary>
-    /// <value>
-    ///     The number of retries. Must be between 1 and 10. Defaults to 3.
-    /// </value>
-    /// <remarks>
-    ///     Retries use exponential backoff with jitter to avoid thundering herd problems.
-    ///     Only transient failures (network errors, rate limits) trigger retries.
-    /// </remarks>
-    [Range(1, 10, ErrorMessage = "MaxRetries must be between 1 and 10")]
-    public int MaxRetries { get; init; } = 3;
-
-    /// <summary>
-    ///     Gets or initializes the timeout duration in seconds for individual API calls.
+    ///     Gets or initializes the timeout duration in seconds for HTTP client requests.
     /// </summary>
     /// <value>
     ///     The timeout in seconds. Must be between 5 and 120. Defaults to 30.
     /// </value>
     /// <remarks>
-    ///     This timeout applies to each individual HTTP request, not the total operation time including retries.
-    ///     Adjust based on expected document sizes and network conditions.
+    ///     Resilience (retries, circuit breaker) is handled automatically by Microsoft.Extensions.Http.Resilience.
     /// </remarks>
     [Range(5, 120, ErrorMessage = "TimeoutSeconds must be between 5 and 120")]
     public int TimeoutSeconds { get; init; } = 30;

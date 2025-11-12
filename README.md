@@ -72,29 +72,39 @@ eventSource.addEventListener('ocr-completed', (event) => {
 });
 ```
 
- ### GenAI Support (v1.0.4+)
+### GenAI Support (v2.0.0+)
 
-  ```csharp
-  // Enable GenAI features
-  builder.Services.AddPaperlessRabbitMq(configuration,
-      includeOcrResultStream: true,
-      includeGenAiResultStream: true);
+```csharp
+// Enable GenAI features with RabbitMQ streaming
+builder.Services.AddPaperlessRabbitMq(configuration,
+    includeOcrResultStream: true,
+    includeGenAiResultStream: true);
 
-  // Configure Gemini
-  builder.Services.Configure<GeminiOptions>(configuration.GetSection("Gemini"));
-  builder.Services.AddHttpClient<ITextSummarizer, GeminiService>();
-  builder.Services.AddHostedService<GenAIWorker>();
+// Add Gemini document summarization (includes automatic resilience)
+builder.Services.AddPaperlessGenAI(configuration);
 
-  // Publish GenAI command
+// Publish GenAI command
 var genAiCommand = new GenAICommand(request.JobId, result.Text!);
 await _publisher.PublishGenAICommandAsync(genAiCommand);
-  {
-    "Gemini": {
-      "ApiKey": "your-api-key",
-      "Model": "gemini-2.0-flash"
-    }
-  }
 ```
+
+**Configuration:**
+
+```json
+{
+  "Gemini": {
+    "ApiKey": "your-api-key",
+    "Model": "gemini-2.0-flash",
+    "TimeoutSeconds": 30
+  }
+}
+```
+
+**What you get automatically:**
+- HTTP retry with exponential backoff + jitter (3 attempts)
+- Circuit breaker for preventing cascade failures
+- Timeout handling per request
+- All powered by `Microsoft.Extensions.Http.Resilience`
 
 ## Message Types
 

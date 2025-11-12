@@ -10,7 +10,7 @@ public class GeminiServiceTests
     private readonly Mock<ILogger<GeminiService>> _loggerMock = new();
 
     private readonly GeminiOptions _options = new()
-        { ApiKey = "test-key", Model = "gemini-2.0-flash", MaxRetries = 2, TimeoutSeconds = 5 };
+        { ApiKey = "test-key", Model = "gemini-2.0-flash", TimeoutSeconds = 5 };
 
     [Fact]
     public async Task SummarizeAsync_WithValidText_ReturnsSummary()
@@ -63,42 +63,26 @@ public class GeminiServiceTests
     }
 
     [Fact]
-    public async Task SummarizeAsync_WithApiError_RetriesAndReturnsNull()
+    public async Task SummarizeAsync_WithApiError_ReturnsNull()
     {
-        var callCount = 0;
-        var httpClient = CreateMockHttpClient(() =>
-        {
-            callCount++;
-            return new HttpResponseMessage(HttpStatusCode.InternalServerError);
-        });
-
+        var httpClient = CreateMockHttpClient(HttpStatusCode.InternalServerError, "Error");
         var service = CreateService(httpClient);
 
         var result = await service.SummarizeAsync("test text", TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
-        callCount.Should().Be(3);
     }
 
     [Fact]
-    public async Task SummarizeAsync_WithRateLimitThenSuccess_RetriesAndSucceeds()
+    public async Task SummarizeAsync_WithSuccessfulResponse_ReturnsSummary()
     {
-        var callCount = 0;
-        var httpClient = CreateMockHttpClient(() =>
-        {
-            callCount++;
-            return callCount == 1
-                ? new HttpResponseMessage(HttpStatusCode.TooManyRequests)
-                : new HttpResponseMessage(HttpStatusCode.OK)
-                    { Content = new StringContent(CreateGeminiResponse("Retry succeeded")) };
-        });
-
+        const string expectedSummary = "Test summary from API";
+        var httpClient = CreateMockHttpClient(HttpStatusCode.OK, CreateGeminiResponse(expectedSummary));
         var service = CreateService(httpClient);
 
         var result = await service.SummarizeAsync("test text", TestContext.Current.CancellationToken);
 
-        result.Should().Be("Retry succeeded");
-        callCount.Should().Be(2);
+        result.Should().Be(expectedSummary);
     }
 
     [Fact]
@@ -119,8 +103,7 @@ public class GeminiServiceTests
         var options = Options.Create(new GeminiOptions
         {
             ApiKey = "test",
-            Model = "test",
-            MaxRetries = 1
+            Model = "test"
         });
         var logger = new Mock<ILogger<GeminiService>>();
         var service = new GeminiService(httpClient, options, logger.Object);
@@ -133,8 +116,8 @@ public class GeminiServiceTests
         result.Should().BeNull();
         logger.Verify(
             l => l.Log(LogLevel.Error, It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("failed after")),
-                It.IsAny<TaskCanceledException>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("failed")),
+                It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     private GeminiService CreateService(HttpClient httpClient)
@@ -149,16 +132,6 @@ public class GeminiServiceTests
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage(statusCode)
                 { Content = new StringContent(content) });
-
-        return new HttpClient(handlerMock.Object);
-    }
-
-    private static HttpClient CreateMockHttpClient(Func<HttpResponseMessage> responseFactory)
-    {
-        var handlerMock = new Mock<HttpMessageHandler>();
-        handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(responseFactory);
 
         return new HttpClient(handlerMock.Object);
     }
