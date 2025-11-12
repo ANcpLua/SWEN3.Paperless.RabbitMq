@@ -29,9 +29,7 @@ services.AddPaperlessGenAI(configuration);
 
 **Breaking Changes:**
 - Configuration section renamed: `GenAI:Gemini` → `Gemini`
-- Removed `MaxRetries` property (handled automatically)
-- Replaced Polly with Microsoft.Extensions.Http.Resilience
-- **Validation is now optional** - add it yourself if needed (consistent with `AddPaperlessRabbitMq`)
+- Removed `MaxRetries` property from `GeminiOptions` (retry handling now managed by `AddStandardResilienceHandler()`)
 
 ## Configuration
 

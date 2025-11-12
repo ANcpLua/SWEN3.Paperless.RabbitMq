@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <LangVersion>latestMajor</LangVersion>
         <PackageId>SWEN3.Paperless.RabbitMq</PackageId>
-        <Version>2.0.0</Version>
+        <Version>2.0.1</Version>
         <Authors>Alexander Nachtmann</Authors>
         <Description>RabbitMQ messaging and SSE support for Paperless</Description>
         <PackageTags>rabbitmq;sse;messaging;paperless;net10</PackageTags>
@@ -25,8 +25,9 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AwesomeAssertions" Version="9.3.0" />
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
-        <PackageReference Include="RabbitMQ.Client" Version="7.1.2"/>
+        <PackageReference Include="RabbitMQ.Client" Version="7.2.0"/>
     </ItemGroup>
 
     <ItemGroup>

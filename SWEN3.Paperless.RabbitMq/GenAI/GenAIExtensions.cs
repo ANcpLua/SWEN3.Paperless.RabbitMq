@@ -4,7 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace SWEN3.Paperless.RabbitMq.GenAI;
 
 /// <summary>
-///     Extension methods for configuring GenAI document summarization services.
+///     Provides extension methods to configure GenAI document summarization services.
+///     <para>Use <see cref="GenAIExtensions.AddPaperlessGenAI" /> to register GenAI services with automatic resilience.</para>
 /// </summary>
 public static class GenAIExtensions
 {
