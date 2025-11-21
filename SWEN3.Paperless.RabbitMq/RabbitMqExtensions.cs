@@ -12,6 +12,7 @@ namespace SWEN3.Paperless.RabbitMq;
 /// <summary>
 ///     <para>Use <see cref="PublishingExtensions.PublishOcrCommandAsync{T}" /> to publish OCR commands.</para>
 ///     <para>Use <see cref="PublishingExtensions.PublishOcrEventAsync{T}" /> to publish OCR events.</para>
+///     <para>Use <see cref="GenAIPublishingExtensions.PublishGenAICommandAsync{T}" /> to publish GenAI commands (e.g., summaries).</para>
 ///     <para>Use <see cref="GenAIPublishingExtensions.PublishGenAIEventAsync{T}" /> to publish GenAI events.</para>
 ///     <para>Use <see cref="IRabbitMqConsumerFactory.CreateConsumerAsync{T}" /> to create message consumers.</para>
 ///     <para>Use <see cref="PaperlessEndpointExtensions.MapOcrEventStream" /> to map OCR SSE endpoint.</para>
