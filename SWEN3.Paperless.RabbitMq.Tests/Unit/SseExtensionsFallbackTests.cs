@@ -47,6 +47,7 @@ public class SseExtensionsFallbackTests
     }
 
     [Fact]
+    [SuppressMessage("Design", "MA0051:Method is too long")]
     public async Task MapSse_Fallback_ValidatesHeadersAndMultiEventPayload()
     {
         // Arrange
@@ -120,7 +121,7 @@ public class SseExtensionsFallbackTests
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-        var fakeStream = new Helpers.FakeCompletableSseStream<Messages.SseTestEvent>();
+        var fakeStream = new FakeCompletableSseStream<Messages.SseTestEvent>();
 
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
             configureServices: services => services.AddSingleton<ISseStream<Messages.SseTestEvent>>(fakeStream),
@@ -132,11 +133,17 @@ public class SseExtensionsFallbackTests
         var client = server.CreateClient();
         client.Timeout = Timeout.InfiniteTimeSpan;
 
-        // Act - Connect without cancellation token to avoid cancellation-based termination
-        var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, CancellationToken.None);
+        // Act - connect with test token
+        var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
-        // Wait for connection to establish
-        await Task.Delay(100, cts.Token);
+        // Wait for connection to establish (subscriber registered)
+        var start = DateTime.UtcNow;
+        while (fakeStream.ClientCount == 0)
+        {
+            if (DateTime.UtcNow - start > TimeSpan.FromSeconds(5))
+                throw new TimeoutException("SSE client did not connect");
+            await Task.Delay(50, cts.Token);
+        }
 
         // Publish one event
         fakeStream.Publish(new Messages.SseTestEvent { Id = 42, Message = "Final" });

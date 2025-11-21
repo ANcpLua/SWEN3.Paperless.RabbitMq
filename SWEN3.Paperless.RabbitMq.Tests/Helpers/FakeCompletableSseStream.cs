@@ -1,37 +1,30 @@
+using System.Collections.Concurrent;
 using System.Threading.Channels;
 
 namespace SWEN3.Paperless.RabbitMq.Tests.Helpers;
 
 /// <summary>
-///     Test-only implementation of ISseStream that can be completed on demand.
-///     Uses a Channel internally to enable natural completion of ReadAllAsync.
+///     Test-only implementation of ISseStream that mirrors production semantics:
+///     one channel per subscriber plus an explicit Complete() hook to end streams naturally.
 /// </summary>
 internal sealed class FakeCompletableSseStream<T> : ISseStream<T> where T : class
 {
-    private readonly Channel<T> _channel = Channel.CreateUnbounded<T>();
-    private readonly Dictionary<Guid, ChannelReader<T>> _subscribers = new();
-    private readonly Lock _lock = new();
+    private readonly ConcurrentDictionary<Guid, Channel<T>> _channels = new();
 
     /// <summary>
     ///     Gets the current number of active subscribers.
     /// </summary>
-    public int ClientCount
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _subscribers.Count;
-            }
-        }
-    }
+    public int ClientCount => _channels.Count;
 
     /// <summary>
     ///     Publishes an event to all subscribers.
     /// </summary>
     public void Publish(T message)
     {
-        _channel.Writer.TryWrite(message);
+        foreach (var channel in _channels.Values)
+        {
+            channel.Writer.TryWrite(message);
+        }
     }
 
     /// <summary>
@@ -39,11 +32,14 @@ internal sealed class FakeCompletableSseStream<T> : ISseStream<T> where T : clas
     /// </summary>
     public ChannelReader<T> Subscribe(Guid clientId)
     {
-        lock (_lock)
+        var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
         {
-            _subscribers[clientId] = _channel.Reader;
-            return _channel.Reader;
-        }
+            SingleReader = true,
+            SingleWriter = true
+        });
+
+        _channels[clientId] = channel;
+        return channel.Reader;
     }
 
     /// <summary>
@@ -51,9 +47,9 @@ internal sealed class FakeCompletableSseStream<T> : ISseStream<T> where T : clas
     /// </summary>
     public void Unsubscribe(Guid clientId)
     {
-        lock (_lock)
+        if (_channels.TryRemove(clientId, out var channel))
         {
-            _subscribers.Remove(clientId);
+            channel.Writer.TryComplete();
         }
     }
 
@@ -62,6 +58,9 @@ internal sealed class FakeCompletableSseStream<T> : ISseStream<T> where T : clas
     /// </summary>
     public void Complete()
     {
-        _channel.Writer.TryComplete();
+        foreach (var channel in _channels.Values)
+        {
+            channel.Writer.TryComplete();
+        }
     }
 }

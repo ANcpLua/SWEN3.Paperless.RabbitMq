@@ -4,6 +4,20 @@ public class SseExtensionsTests
 {
     private const string TestEndpoint = "/sse-test";
 
+    private static async Task WaitForClientsAsync(ISseStream<Messages.SseTestEvent> stream, int expected, CancellationToken ct)
+    {
+        var start = DateTime.UtcNow;
+        while (stream.ClientCount < expected)
+        {
+            if (DateTime.UtcNow - start > TimeSpan.FromSeconds(5))
+            {
+                throw new TimeoutException("Client did not connect within timeout");
+            }
+
+            await Task.Delay(50, ct);
+        }
+    }
+
     [Fact]
     public async Task MapSse_WithPublishedEvent_ShouldStreamToClient()
     {
@@ -20,9 +34,7 @@ public class SseExtensionsTests
 
         var responseTask = client.GetAsync(TestEndpoint, HttpCompletionOption.ResponseHeadersRead, ct);
 
-        // Wait for HTTP client to connect
-        while (sseStream.ClientCount == 0)
-            await Task.Delay(50, ct);
+        await WaitForClientsAsync(sseStream, 1, ct);
 
         var testEvent = new Messages.SseTestEvent { Id = 42, Message = "Hello SSE" };
         sseStream.Publish(testEvent);
@@ -37,13 +49,23 @@ public class SseExtensionsTests
         var blankLine = await reader.ReadLineAsync(ct);
 
         eventLine.Should().Be("event: test-event");
-        // Note: .NET 9 uses PascalCase, .NET 10+ uses camelCase
-        dataLine.Should().Contain("42");
-        dataLine.Should().Contain("Hello SSE");
+        dataLine.Should().StartWith("data: ");
+        var json = dataLine["data: ".Length..];
+        using (var doc = JsonDocument.Parse(json))
+        {
+            var root = doc.RootElement;
+            root.TryGetProperty("Id", out var idPascal);
+            root.TryGetProperty("Message", out var msgPascal);
+            root.TryGetProperty("id", out var idCamel);
+            root.TryGetProperty("message", out var msgCamel);
+            (idPascal.ValueKind != JsonValueKind.Undefined ? idPascal.GetInt32() : idCamel.GetInt32()).Should().Be(42);
+            (msgPascal.ValueKind != JsonValueKind.Undefined ? msgPascal.GetString() : msgCamel.GetString()).Should().Be("Hello SSE");
+        }
         blankLine.Should().BeEmpty();
     }
 
     [Fact]
+    [SuppressMessage("Design", "MA0051:Method is too long")]
     public async Task MapSse_MultipleClients_ShouldReceiveSameEvent()
     {
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
@@ -63,9 +85,7 @@ public class SseExtensionsTests
         var responseTask1 = client1.GetAsync(TestEndpoint, HttpCompletionOption.ResponseHeadersRead, ct);
         var responseTask2 = client2.GetAsync(TestEndpoint, HttpCompletionOption.ResponseHeadersRead, ct);
 
-        // Wait for both HTTP clients to connect
-        while (sseStream.ClientCount < 2)
-            await Task.Delay(50, ct);
+        await WaitForClientsAsync(sseStream, 2, ct);
 
         var testEvent = new Messages.SseTestEvent { Id = 99, Message = "Broadcast" };
         sseStream.Publish(testEvent);
@@ -90,14 +110,33 @@ public class SseExtensionsTests
         var blank2 = await reader2.ReadLineAsync(ct);
 
         event1.Should().Be("event: test-event");
-        // Note: .NET 9 uses PascalCase, .NET 10+ uses camelCase
-        data1.Should().Contain("99");
-        data1.Should().Contain("Broadcast");
+        data1.Should().StartWith("data: ");
+        var json1 = data1["data: ".Length..];
+        using (var doc = JsonDocument.Parse(json1))
+        {
+            var root = doc.RootElement;
+            root.TryGetProperty("Id", out var idPascal);
+            root.TryGetProperty("Message", out var msgPascal);
+            root.TryGetProperty("id", out var idCamel);
+            root.TryGetProperty("message", out var msgCamel);
+            (idPascal.ValueKind != JsonValueKind.Undefined ? idPascal.GetInt32() : idCamel.GetInt32()).Should().Be(99);
+            (msgPascal.ValueKind != JsonValueKind.Undefined ? msgPascal.GetString() : msgCamel.GetString()).Should().Be("Broadcast");
+        }
         blank1.Should().BeEmpty();
 
         event2.Should().Be("event: test-event");
-        data2.Should().Contain("99");
-        data2.Should().Contain("Broadcast");
+        data2.Should().StartWith("data: ");
+        var json2 = data2["data: ".Length..];
+        using (var doc = JsonDocument.Parse(json2))
+        {
+            var root = doc.RootElement;
+            root.TryGetProperty("Id", out var idPascal);
+            root.TryGetProperty("Message", out var msgPascal);
+            root.TryGetProperty("id", out var idCamel);
+            root.TryGetProperty("message", out var msgCamel);
+            (idPascal.ValueKind != JsonValueKind.Undefined ? idPascal.GetInt32() : idCamel.GetInt32()).Should().Be(99);
+            (msgPascal.ValueKind != JsonValueKind.Undefined ? msgPascal.GetString() : msgCamel.GetString()).Should().Be("Broadcast");
+        }
         blank2.Should().BeEmpty();
     }
 }
