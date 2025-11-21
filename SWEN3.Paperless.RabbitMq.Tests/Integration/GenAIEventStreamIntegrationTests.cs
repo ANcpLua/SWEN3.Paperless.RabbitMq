@@ -7,37 +7,41 @@ public class GenAIEventStreamIntegrationTests
     [InlineData("Failed", "genai-failed")]
     public async Task MapGenAIEventStream_ShouldEmitCorrectEventType(string status, string expectedEventType)
     {
-        var sseStream = new SseStream<GenAIEvent>();
-        using var server = SseTestHelpers.CreateSseTestServer(sseStream, endpoints => endpoints.MapGenAIEventStream());
+        var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<GenAIEvent>(
+            configureServices: null,
+            configureEndpoints: endpoints => endpoints.MapGenAIEventStream());
+
+        using var _ = host;
+        var sseStream = host.Services.GetRequiredService<ISseStream<GenAIEvent>>();
         var client = server.CreateClient();
+        var ct = TestContext.Current.CancellationToken;
 
         var readTask = Task.Run(async () =>
         {
             using var response =
-                await client.GetAsync("/api/v1/events/genai", HttpCompletionOption.ResponseHeadersRead);
-            await using var stream = await response.Content.ReadAsStreamAsync();
+                await client.GetAsync("/api/v1/events/genai", HttpCompletionOption.ResponseHeadersRead, ct);
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var reader = new StreamReader(stream);
 
             while (true)
             {
-                var line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync(ct);
                 if (line == null)
                     return null;
                 if (line.StartsWith("event:"))
                     return line;
             }
-        });
+        }, ct);
 
         while (sseStream.ClientCount == 0)
-            await Task.Delay(50, TestContext.Current.CancellationToken);
+            await Task.Delay(50, ct);
 
         var genAiEvent = status == "Completed"
             ? new GenAIEvent(Guid.NewGuid(), "Test summary", DateTimeOffset.UtcNow)
             : new GenAIEvent(Guid.NewGuid(), string.Empty, DateTimeOffset.UtcNow, "Service error");
         sseStream.Publish(genAiEvent);
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        var eventLine = await readTask.WaitAsync(cts.Token);
+        var eventLine = await readTask;
 
         eventLine.Should().Be($"event: {expectedEventType}");
     }
@@ -45,13 +49,16 @@ public class GenAIEventStreamIntegrationTests
     [Fact]
     public async Task MapGenAIEventStream_WithMultipleEvents_ShouldStreamInOrder()
     {
-        var sseStream = new SseStream<GenAIEvent>();
-        using var server = SseTestHelpers.CreateSseTestServer(sseStream, endpoints => endpoints.MapGenAIEventStream());
+        var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<GenAIEvent>(
+            configureServices: null,
+            configureEndpoints: endpoints => endpoints.MapGenAIEventStream());
 
+        using var _ = host;
+        var sseStream = host.Services.GetRequiredService<ISseStream<GenAIEvent>>();
         var client = server.CreateClient();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var token = cts.Token;
-        var readTask = Task.Run(() => ReadEventsAsync(client, 3, token), token);
+        var ct = TestContext.Current.CancellationToken;
+
+        var readTask = Task.Run(() => ReadEventsAsync(client, 3, ct), ct);
 
         // Wait for client to connect with timeout
         var waitStart = DateTime.UtcNow;
@@ -59,21 +66,21 @@ public class GenAIEventStreamIntegrationTests
         {
             if (DateTime.UtcNow - waitStart > TimeSpan.FromSeconds(10))
                 throw new TimeoutException("Client did not connect within timeout");
-            await Task.Delay(50, TestContext.Current.CancellationToken);
+            await Task.Delay(50, ct);
         }
 
         // Give the HTTP connection a moment to stabilize
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        await Task.Delay(100, ct);
 
         sseStream.Publish(new GenAIEvent(Guid.NewGuid(), "Summary 1", DateTimeOffset.UtcNow));
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await Task.Delay(50, ct);
 
         sseStream.Publish(new GenAIEvent(Guid.NewGuid(), "Summary 2", DateTimeOffset.UtcNow));
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await Task.Delay(50, ct);
 
         sseStream.Publish(new GenAIEvent(Guid.NewGuid(), string.Empty, DateTimeOffset.UtcNow, "Error occurred"));
 
-        var events = await readTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        var events = await readTask;
 
         events[0].Event.Should().Be("event: genai-completed");
         events[0].Data.Should().Contain("Summary 1");

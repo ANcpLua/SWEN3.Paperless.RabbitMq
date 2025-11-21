@@ -63,7 +63,6 @@ public class SseExtensionsNet10Tests
         {
             await cts.CancelAsync();
             await publisherTask;
-            await host.StopAsync();
         }
     }
 
@@ -154,7 +153,6 @@ public class SseExtensionsNet10Tests
         {
             await cts.CancelAsync();
             await publisherTask;
-            await host.StopAsync();
         }
     }
 
@@ -208,7 +206,6 @@ public class SseExtensionsNet10Tests
         finally
         {
             await publisherTask;
-            await host.StopAsync();
         }
     }
 
@@ -240,37 +237,30 @@ public class SseExtensionsNet10Tests
         // Publish one event
         fakeStream.Publish(new Messages.SseTestEvent { Id = 99, Message = "Done" });
 
-        try
-        {
-            var response = await responseTask.WaitAsync(cts.Token);
-            response.EnsureSuccessStatusCode();
+        var response = await responseTask.WaitAsync(cts.Token);
+        response.EnsureSuccessStatusCode();
 
-            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
-            using var reader = new StreamReader(stream, Encoding.UTF8);
+        await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
 
-            // Read the event
-            var eventLine = await reader.ReadLineAsync(cts.Token);
-            var dataLine = await reader.ReadLineAsync(cts.Token);
-            var blankLine = await reader.ReadLineAsync(cts.Token);
+        // Read the event
+        var eventLine = await reader.ReadLineAsync(cts.Token);
+        var dataLine = await reader.ReadLineAsync(cts.Token);
+        var blankLine = await reader.ReadLineAsync(cts.Token);
 
-            eventLine.Should().Be("event: final-event");
-            dataLine.Should().Be("data: {\"id\":99,\"message\":\"Done\"}");
-            blankLine.Should().BeEmpty();
+        eventLine.Should().Be("event: final-event");
+        dataLine.Should().Be("data: {\"id\":99,\"message\":\"Done\"}");
+        blankLine.Should().BeEmpty();
 
-            // Complete the stream to end ReadAllAsync naturally
-            fakeStream.Complete();
+        // Complete the stream to end ReadAllAsync naturally
+        fakeStream.Complete();
 
-            // Verify the stream ends (ReadLineAsync returns null)
-            var endLine = await reader.ReadLineAsync(cts.Token);
-            endLine.Should().BeNull("stream should end naturally after Complete()");
+        // Verify the stream ends (ReadLineAsync returns null)
+        var endLine = await reader.ReadLineAsync(cts.Token);
+        endLine.Should().BeNull("stream should end naturally after Complete()");
 
-            // Note: In NET10, RequestAborted handler only fires on actual cancellation,
-            // not on natural stream completion, so ClientCount stays 1 (expected behavior)
-        }
-        finally
-        {
-            await host.StopAsync();
-        }
+        // Note: In NET10, RequestAborted handler only fires on actual cancellation,
+        // not on natural stream completion, so ClientCount stays 1 (expected behavior)
     }
 #endif
 }

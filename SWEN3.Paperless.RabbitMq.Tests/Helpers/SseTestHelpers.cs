@@ -6,31 +6,6 @@ namespace SWEN3.Paperless.RabbitMq.Tests.Helpers;
 internal static class SseTestHelpers
 {
     /// <summary>
-    ///     Creates a test server with a provided SSE stream instance (legacy, for integration tests).
-    /// </summary>
-    public static TestServer CreateSseTestServer<T>(ISseStream<T> sseStream,
-        Action<IEndpointRouteBuilder> configureEndpoints) where T : class
-    {
-        var hostBuilder = new HostBuilder().ConfigureWebHost(webHost =>
-        {
-            webHost.UseTestServer();
-            webHost.ConfigureServices(services =>
-            {
-                services.AddSingleton(sseStream);
-                services.AddRouting();
-            });
-            webHost.Configure(app =>
-            {
-                app.UseRouting();
-                app.UseEndpoints(configureEndpoints);
-            });
-        });
-
-        var host = hostBuilder.StartAsync().GetAwaiter().GetResult();
-        return host.GetTestServer();
-    }
-
-    /// <summary>
     ///     Creates a test server with SSE stream configured, using modern IHost and TestServer.
     /// </summary>
     /// <typeparam name="T">The event type to stream</typeparam>

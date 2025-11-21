@@ -8,27 +8,31 @@ public sealed class OcrEventStreamIntegrationTests
     [InlineData("Processing", "ocr-failed")]
     public async Task MapOcrEventStream_ShouldEmitCorrectEventType(string status, string expectedEventType)
     {
-        var sseStream = new SseStream<OcrEvent>();
-        var server = SseTestHelpers.CreateSseTestServer(sseStream, endpoints => endpoints.MapOcrEventStream());
+        var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<OcrEvent>(
+            configureServices: null,
+            configureEndpoints: endpoints => endpoints.MapOcrEventStream());
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var _ = host;
+        var sseStream = host.Services.GetRequiredService<ISseStream<OcrEvent>>();
+        var ct = TestContext.Current.CancellationToken;
+
         var readTask = Task.Run(async () =>
         {
             using var client = server.CreateClient();
             using var response = await client.GetAsync("/api/v1/ocr-results", HttpCompletionOption.ResponseHeadersRead,
-                cts.Token);
-            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+                ct);
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var reader = new StreamReader(stream);
 
             while (true)
             {
-                var line = await reader.ReadLineAsync(cts.Token);
+                var line = await reader.ReadLineAsync(ct);
                 if (line == null)
                     return null;
                 if (line.StartsWith("event:"))
                     return line;
             }
-        }, cts.Token);
+        }, ct);
 
         // Wait for client to connect with timeout
         var waitStart = DateTime.UtcNow;
@@ -36,17 +40,17 @@ public sealed class OcrEventStreamIntegrationTests
         {
             if (DateTime.UtcNow - waitStart > TimeSpan.FromSeconds(10))
                 throw new TimeoutException("Client did not connect within timeout");
-            await Task.Delay(50, TestContext.Current.CancellationToken);
+            await Task.Delay(50, ct);
         }
 
         // Give the HTTP connection a moment to stabilize
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        await Task.Delay(100, ct);
 
         var ocrEvent = new OcrEvent(Guid.NewGuid(), status, status is "Completed" ? "Text" : null,
             DateTimeOffset.UtcNow);
         sseStream.Publish(ocrEvent);
 
-        var eventLine = await readTask.WaitAsync(cts.Token);
+        var eventLine = await readTask;
 
         eventLine.Should().Be($"event: {expectedEventType}");
     }
