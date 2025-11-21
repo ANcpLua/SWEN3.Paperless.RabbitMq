@@ -44,7 +44,14 @@ jobs:
 
       - name: Publish packages to NuGet.org
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Request OIDC token for NuGet Trusted Publishing
+          OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r '.value')
+
+          # Push package with OIDC token
           dotnet nuget push ./nupkg/*.nupkg \
             --source https://api.nuget.org/v3/index.json \
+            --api-key "$OIDC_TOKEN" \
             --skip-duplicate

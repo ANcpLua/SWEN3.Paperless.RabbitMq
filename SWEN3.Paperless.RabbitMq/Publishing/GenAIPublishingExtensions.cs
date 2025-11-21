@@ -19,6 +19,10 @@ public static class GenAIPublishingExtensions
     /// <param name="publisher">The RabbitMQ publisher instance.</param>
     /// <param name="command">The GenAI command to publish.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
+    /// <example>
+    ///     <code>var command = new GenAICommand(jobId, text);</code>
+    ///     <code>await publisher.PublishGenAICommandAsync(command);</code>
+    /// </example>
     public static async Task PublishGenAICommandAsync<T>(this IRabbitMqPublisher publisher, T command)
         where T : class =>
         await publisher.PublishAsync(RabbitMqSchema.GenAICommandRouting, command).ConfigureAwait(false);
