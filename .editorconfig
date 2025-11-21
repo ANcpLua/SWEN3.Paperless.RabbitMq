@@ -1,0 +1,544 @@
+# EditorConfig is awesome: https://EditorConfig.org
+# SWEN3.Paperless.RabbitMq - Optimized for .NET 10 & C# 14
+# Strategy: "Clean Trinity" Analyzers with Overlap Management
+
+root = true
+
+# ==================================================================
+# GENERAL FILE SETTINGS
+# ==================================================================
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+end_of_line = lf
+
+[*.cs]
+indent_style = space
+indent_size = 4
+tab_width = 4
+
+[*.{csproj,vbproj,vcxproj,proj,props,targets}]
+indent_size = 2
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+# ==================================================================
+# C# CODE STYLE PREFERENCES (.NET 10 / C# 14)
+# ==================================================================
+
+[*.cs]
+
+# ------------------------------------------------------------------
+# Using Directives
+# ------------------------------------------------------------------
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+# ------------------------------------------------------------------
+# this. and Me. preferences
+# ------------------------------------------------------------------
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
+
+# ------------------------------------------------------------------
+# Language keywords vs BCL types
+# ------------------------------------------------------------------
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+dotnet_style_predefined_type_for_member_access = true:warning
+
+# ------------------------------------------------------------------
+# Modifier preferences
+# ------------------------------------------------------------------
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_style_readonly_field = true:warning
+csharp_preferred_modifier_order = public, private, protected, internal, static, extern, new, virtual, abstract, sealed, override, readonly, unsafe, volatile, async:warning
+
+# ------------------------------------------------------------------
+# Expression preferences
+# ------------------------------------------------------------------
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_prefer_auto_properties = true:suggestion
+dotnet_style_prefer_compound_assignment = true:warning
+dotnet_style_prefer_simplified_boolean_expressions = true:warning
+dotnet_style_prefer_conditional_expression_over_assignment = true:suggestion
+dotnet_style_prefer_conditional_expression_over_return = false:suggestion
+dotnet_style_prefer_inferred_tuple_names = true:suggestion
+dotnet_style_prefer_inferred_anonymous_type_member_names = true:suggestion
+dotnet_style_explicit_tuple_names = true:warning
+
+# ------------------------------------------------------------------
+# Null-checking preferences
+# ------------------------------------------------------------------
+dotnet_style_coalesce_expression = true:warning
+dotnet_style_null_propagation = true:warning
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
+
+# ------------------------------------------------------------------
+# Parameter preferences
+# ------------------------------------------------------------------
+dotnet_code_quality_unused_parameters = all:warning
+
+# ==================================================================
+# C# 14 LANGUAGE FEATURES (AGGRESSIVE ENFORCEMENT)
+# ==================================================================
+
+[*.cs]
+
+# ------------------------------------------------------------------
+# C# 14: File-Scoped Namespaces (Mandatory)
+# ------------------------------------------------------------------
+csharp_style_namespace_declarations = file_scoped:warning
+
+# ------------------------------------------------------------------
+# C# 12+: Collection Expressions
+# ------------------------------------------------------------------
+dotnet_style_prefer_collection_expression = true:warning
+
+# ------------------------------------------------------------------
+# C# 8+: Switch Expressions
+# ------------------------------------------------------------------
+csharp_style_prefer_switch_expression = true:warning
+
+# ------------------------------------------------------------------
+# C# 8+: Using Declarations
+# ------------------------------------------------------------------
+csharp_prefer_simple_using_statement = true:warning
+
+# ------------------------------------------------------------------
+# C# 7+: Pattern Matching
+# ------------------------------------------------------------------
+csharp_style_pattern_matching_over_is_with_cast_check = true:warning
+csharp_style_pattern_matching_over_as_with_null_check = true:warning
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_not_pattern = true:warning
+csharp_style_prefer_extended_property_pattern = true:suggestion
+
+# ------------------------------------------------------------------
+# C# 11+: UTF-8 String Literals (for performance)
+# ------------------------------------------------------------------
+csharp_style_prefer_utf8_string_literals = true:suggestion
+
+# ------------------------------------------------------------------
+# C# 10+: Global using
+# ------------------------------------------------------------------
+csharp_using_directive_placement = outside_namespace:warning
+
+# ------------------------------------------------------------------
+# C# 9+: Target-typed new
+# ------------------------------------------------------------------
+csharp_style_implicit_object_creation_when_type_is_apparent = true:warning
+
+# ------------------------------------------------------------------
+# Expression-bodied members
+# ------------------------------------------------------------------
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_operators = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = when_on_single_line:suggestion
+csharp_style_expression_bodied_indexers = when_on_single_line:suggestion
+csharp_style_expression_bodied_accessors = when_on_single_line:suggestion
+csharp_style_expression_bodied_lambdas = when_on_single_line:suggestion
+csharp_style_expression_bodied_local_functions = when_on_single_line:suggestion
+
+# ------------------------------------------------------------------
+# Other modern C# preferences
+# ------------------------------------------------------------------
+csharp_style_throw_expression = true:suggestion
+csharp_style_conditional_delegate_call = true:warning
+csharp_prefer_braces = false:none
+csharp_style_prefer_index_operator = true:warning
+csharp_style_prefer_range_operator = true:warning
+csharp_style_prefer_tuple_swap = true:warning
+csharp_style_deconstructed_variable_declaration = true:suggestion
+csharp_style_inlined_variable_declaration = true:warning
+csharp_prefer_simple_default_expression = true:warning
+csharp_style_prefer_local_over_anonymous_function = true:suggestion
+csharp_style_prefer_method_group_conversion = true:suggestion
+csharp_style_prefer_top_level_statements = true:suggestion
+
+# ==================================================================
+# C# FORMATTING (Use built-in .NET formatter only)
+# ==================================================================
+
+[*.cs]
+
+# ------------------------------------------------------------------
+# New line preferences
+# ------------------------------------------------------------------
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_between_query_expression_clauses = true
+
+# ------------------------------------------------------------------
+# Indentation
+# ------------------------------------------------------------------
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_indent_labels = no_change
+csharp_indent_block_contents = true
+csharp_indent_braces = false
+csharp_indent_case_contents_when_block = false
+
+# ------------------------------------------------------------------
+# Spacing
+# ------------------------------------------------------------------
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_between_parentheses = false
+csharp_space_before_colon_in_inheritance_clause = true
+csharp_space_after_colon_in_inheritance_clause = true
+csharp_space_around_binary_operators = before_and_after
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_method_declaration_empty_parameter_list_parentheses = false
+csharp_space_between_method_declaration_name_and_open_parenthesis = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_space_between_method_call_empty_parameter_list_parentheses = false
+csharp_space_between_method_call_name_and_opening_parenthesis = false
+csharp_space_after_comma = true
+csharp_space_after_dot = false
+csharp_space_after_semicolon_in_for_statement = true
+csharp_space_before_semicolon_in_for_statement = false
+csharp_space_around_declaration_statements = false
+csharp_space_before_open_square_brackets = false
+csharp_space_between_empty_square_brackets = false
+csharp_space_between_square_brackets = false
+
+# ------------------------------------------------------------------
+# Wrapping
+# ------------------------------------------------------------------
+csharp_preserve_single_line_statements = false
+csharp_preserve_single_line_blocks = true
+
+# ==================================================================
+# ANALYZER SEVERITY STRATEGY: "Help, Never Harm"
+# ==================================================================
+
+[*.cs]
+
+# ------------------------------------------------------------------
+# Default Severities by Category
+# ------------------------------------------------------------------
+
+# High-value rules (Performance, Reliability, Security) = warning
+dotnet_analyzer_diagnostic.category-Performance.severity = warning
+dotnet_analyzer_diagnostic.category-Reliability.severity = warning
+dotnet_analyzer_diagnostic.category-Security.severity = warning
+dotnet_analyzer_diagnostic.category-Design.severity = warning
+dotnet_analyzer_diagnostic.category-Maintainability.severity = warning
+
+# Simplifications and refactorings = suggestion (non-breaking)
+dotnet_analyzer_diagnostic.category-Style.severity = suggestion
+dotnet_analyzer_diagnostic.category-Naming.severity = suggestion
+
+# All CA rules default to warning
+dotnet_diagnostic.CA*.severity = warning
+
+# All MA rules (Meziantou) default to warning
+dotnet_diagnostic.MA*.severity = warning
+
+# All RCS rules (Roslynator) default to suggestion (refactorings)
+dotnet_diagnostic.RCS*.severity = suggestion
+
+# All VSTHRD rules (Threading) default to warning
+dotnet_diagnostic.VSTHRD*.severity = warning
+
+# IDE rules default to suggestion
+dotnet_diagnostic.IDE*.severity = suggestion
+
+# ------------------------------------------------------------------
+# User Preferences: Disabled Rules
+# ------------------------------------------------------------------
+
+# IDE0008: Use explicit type instead of 'var' (allow var)
+dotnet_diagnostic.IDE0008.severity = none
+
+# IDE0058: Expression value is never used (allow discarding return values)
+dotnet_diagnostic.IDE0058.severity = none
+
+# IDE0072: Populate switch (allow _ default for simple enums)
+dotnet_diagnostic.IDE0072.severity = none
+
+# Braces-related rules (allow missing braces for single-line statements)
+dotnet_diagnostic.IDE0011.severity = none
+dotnet_diagnostic.RCS1001.severity = none
+dotnet_diagnostic.RCS1003.severity = none
+dotnet_diagnostic.RCS1007.severity = none
+dotnet_diagnostic.RCS1111.severity = none
+dotnet_diagnostic.RCS1031.severity = none
+
+# MA0007: Add comma after the last value (allow no trailing commas)
+dotnet_diagnostic.MA0007.severity = none
+
+# Parentheses clarity rules (allow omitting parentheses)
+dotnet_diagnostic.RCS1123.severity = none
+dotnet_diagnostic.IDE0048.severity = none
+
+# ==================================================================
+# OPTIMIZATION: Disable Roslynator Formatting Analyzers
+# ==================================================================
+# CRITICAL: Use only built-in .NET formatter for layout/spacing
+# Prevents conflicts between Roslynator formatting and .editorconfig
+
+roslynator_formatting_analyzers.enabled = false
+
+# Alternatively, disable individual formatting rules:
+dotnet_diagnostic.RCS0001.severity = none
+dotnet_diagnostic.RCS0002.severity = none
+dotnet_diagnostic.RCS0003.severity = none
+dotnet_diagnostic.RCS0005.severity = none
+dotnet_diagnostic.RCS0006.severity = none
+dotnet_diagnostic.RCS0008.severity = none
+dotnet_diagnostic.RCS0009.severity = none
+dotnet_diagnostic.RCS0010.severity = none
+dotnet_diagnostic.RCS0012.severity = none
+dotnet_diagnostic.RCS0013.severity = none
+dotnet_diagnostic.RCS0014.severity = none
+dotnet_diagnostic.RCS0015.severity = none
+dotnet_diagnostic.RCS0020.severity = none
+dotnet_diagnostic.RCS0021.severity = none
+dotnet_diagnostic.RCS0027.severity = none
+dotnet_diagnostic.RCS0028.severity = none
+dotnet_diagnostic.RCS0029.severity = none
+dotnet_diagnostic.RCS0030.severity = none
+dotnet_diagnostic.RCS0031.severity = none
+dotnet_diagnostic.RCS0032.severity = none
+dotnet_diagnostic.RCS0033.severity = none
+dotnet_diagnostic.RCS0034.severity = none
+dotnet_diagnostic.RCS0036.severity = none
+dotnet_diagnostic.RCS0038.severity = none
+dotnet_diagnostic.RCS0039.severity = none
+dotnet_diagnostic.RCS0041.severity = none
+dotnet_diagnostic.RCS0042.severity = none
+dotnet_diagnostic.RCS0043.severity = none
+dotnet_diagnostic.RCS0044.severity = none
+dotnet_diagnostic.RCS0045.severity = none
+dotnet_diagnostic.RCS0046.severity = none
+dotnet_diagnostic.RCS0047.severity = none
+dotnet_diagnostic.RCS0048.severity = none
+dotnet_diagnostic.RCS0049.severity = none
+dotnet_diagnostic.RCS0050.severity = none
+dotnet_diagnostic.RCS0051.severity = none
+dotnet_diagnostic.RCS0052.severity = none
+dotnet_diagnostic.RCS0053.severity = none
+dotnet_diagnostic.RCS0054.severity = none
+dotnet_diagnostic.RCS0055.severity = none
+dotnet_diagnostic.RCS0056.severity = none
+dotnet_diagnostic.RCS0057.severity = none
+dotnet_diagnostic.RCS0058.severity = none
+dotnet_diagnostic.RCS0059.severity = none
+dotnet_diagnostic.RCS0060.severity = none
+dotnet_diagnostic.RCS0061.severity = none
+
+# ==================================================================
+# OVERLAP MANAGEMENT: Disable Redundant CA Rules
+# ==================================================================
+# Meziantou (MA) and VSTHRD provide superior analysis for these scenarios
+
+[*.cs]
+
+# ------------------------------------------------------------------
+# StringComparison (MA0001 is the sole owner)
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA1307.severity = none
+dotnet_diagnostic.CA1309.severity = none
+dotnet_diagnostic.CA1310.severity = none
+dotnet_diagnostic.RCS1155.severity = none
+
+# ------------------------------------------------------------------
+# CancellationToken (MA0032/MA0040/MA0079/MA0080 are comprehensive)
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA2016.severity = none
+dotnet_diagnostic.RCS1229.severity = none
+
+# ------------------------------------------------------------------
+# StringBuilder Optimizations (MA0028 is the sole owner)
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA1830.severity = none
+dotnet_diagnostic.CA1834.severity = none
+dotnet_diagnostic.RCS1197.severity = none
+
+# ------------------------------------------------------------------
+# Zero-length Array Allocations (MA0005 is better)
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA1825.severity = none
+
+# ------------------------------------------------------------------
+# ConfigureAwait (VSTHRD111 is the sole owner)
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.MA0004.severity = none
+dotnet_diagnostic.RCS1090.severity = none
+
+# ------------------------------------------------------------------
+# LINQ Optimizations (MA0020/MA0031 catch more cases)
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA1826.severity = none
+dotnet_diagnostic.CA1827.severity = none
+dotnet_diagnostic.RCS1077.severity = none
+dotnet_diagnostic.RCS1080.severity = none
+
+# ------------------------------------------------------------------
+# UseAsync Methods (MA0042 has fewer false positives)
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA1849.severity = none
+
+# ==================================================================
+# HIGH-VALUE RULES TO KEEP (Explicit Enforcement)
+# ==================================================================
+
+[*.cs]
+
+# ------------------------------------------------------------------
+# Performance - Critical
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA1848.severity = suggestion # Downgraded: LoggerMessage refactor can be deferred
+dotnet_diagnostic.CA1851.severity = warning
+dotnet_diagnostic.CA1852.severity = warning
+dotnet_diagnostic.CA1853.severity = warning
+dotnet_diagnostic.CA1854.severity = warning
+dotnet_diagnostic.CA1855.severity = warning
+dotnet_diagnostic.CA1860.severity = warning
+dotnet_diagnostic.CA1861.severity = warning
+dotnet_diagnostic.CA1864.severity = warning
+dotnet_diagnostic.CA1865.severity = warning
+dotnet_diagnostic.CA1866.severity = warning
+dotnet_diagnostic.CA1867.severity = warning
+dotnet_diagnostic.CA1868.severity = warning
+dotnet_diagnostic.CA1869.severity = warning
+
+# ------------------------------------------------------------------
+# Reliability - Critical
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA2000.severity = warning
+dotnet_diagnostic.CA2008.severity = warning
+dotnet_diagnostic.CA2012.severity = warning
+dotnet_diagnostic.CA2013.severity = warning
+dotnet_diagnostic.CA2014.severity = warning
+dotnet_diagnostic.CA2015.severity = warning
+dotnet_diagnostic.CA2017.severity = warning
+
+# ------------------------------------------------------------------
+# Security - Warnings
+# ------------------------------------------------------------------
+dotnet_diagnostic.CA2100.severity = warning
+dotnet_diagnostic.CA2109.severity = warning
+dotnet_diagnostic.CA2119.severity = warning
+dotnet_diagnostic.CA3001.severity = warning
+dotnet_diagnostic.CA3002.severity = warning
+dotnet_diagnostic.CA3003.severity = warning
+dotnet_diagnostic.CA3004.severity = warning
+dotnet_diagnostic.CA3005.severity = warning
+dotnet_diagnostic.CA3006.severity = warning
+dotnet_diagnostic.CA3007.severity = warning
+dotnet_diagnostic.CA3008.severity = warning
+dotnet_diagnostic.CA3009.severity = warning
+dotnet_diagnostic.CA3010.severity = warning
+dotnet_diagnostic.CA3011.severity = warning
+dotnet_diagnostic.CA3012.severity = warning
+
+# ------------------------------------------------------------------
+# Meziantou - High Value Rules (excluding overlaps)
+# ------------------------------------------------------------------
+# MA0004 disabled: VSTHRD111 is the sole ConfigureAwait owner
+dotnet_diagnostic.MA0011.severity = warning # IFormatProvider is missing
+dotnet_diagnostic.MA0016.severity = warning # Prefer collection abstraction
+dotnet_diagnostic.MA0020.severity = warning # Direct methods instead of LINQ
+dotnet_diagnostic.MA0028.severity = warning # Optimize StringBuilder
+dotnet_diagnostic.MA0031.severity = warning # Optimize Enumerable.Count
+dotnet_diagnostic.MA0032.severity = warning # CancellationToken overload
+dotnet_diagnostic.MA0040.severity = warning # Forward CancellationToken
+dotnet_diagnostic.MA0042.severity = warning # No blocking calls in async
+dotnet_diagnostic.MA0048.severity = warning # File name must match type
+dotnet_diagnostic.MA0051.severity = warning # Method is too long
+dotnet_diagnostic.MA0053.severity = suggestion # Downgraded: Seal per-class decision
+dotnet_diagnostic.MA0076.severity = warning # Culture-sensitive ToString
+dotnet_diagnostic.MA0079.severity = warning # Forward CT with .WithCancellation()
+dotnet_diagnostic.MA0080.severity = warning # Use CT with .WithCancellation()
+
+# ------------------------------------------------------------------
+# Threading - Critical for SSE + RabbitMQ Async Code
+# ------------------------------------------------------------------
+dotnet_diagnostic.VSTHRD001.severity = warning
+dotnet_diagnostic.VSTHRD002.severity = error    # Sync-over-async = deadlock
+dotnet_diagnostic.VSTHRD003.severity = error    # Awaiting foreign tasks
+dotnet_diagnostic.VSTHRD010.severity = warning
+dotnet_diagnostic.VSTHRD011.severity = warning
+dotnet_diagnostic.VSTHRD100.severity = warning
+dotnet_diagnostic.VSTHRD101.severity = warning
+dotnet_diagnostic.VSTHRD103.severity = warning
+dotnet_diagnostic.VSTHRD110.severity = warning
+dotnet_diagnostic.VSTHRD111.severity = warning
+dotnet_diagnostic.VSTHRD200.severity = warning
+
+# ==================================================================
+# DISABLED LEGACY RULES (Not applicable or deprecated)
+# ==================================================================
+
+[*.cs]
+
+# Legacy FxCop rules
+dotnet_diagnostic.CA1014.severity = none
+dotnet_diagnostic.CA1017.severity = none
+dotnet_diagnostic.CA1021.severity = none
+dotnet_diagnostic.CA1045.severity = none
+dotnet_diagnostic.CA1060.severity = none
+
+# Code Metrics - too noisy
+dotnet_diagnostic.CA1501.severity = none
+dotnet_diagnostic.CA1502.severity = none
+dotnet_diagnostic.CA1505.severity = none
+dotnet_diagnostic.CA1506.severity = none
+dotnet_diagnostic.CA1509.severity = none
+
+# Naming - too opinionated
+dotnet_diagnostic.CA1707.severity = suggestion
+dotnet_diagnostic.CA1711.severity = none # Allow ISseStream naming (not System.IO.Stream)
+dotnet_diagnostic.CA1716.severity = suggestion
+
+# ==================================================================
+# TEST-SPECIFIC RULES
+# ==================================================================
+# Tests don't need ConfigureAwait - no SynchronizationContext in test runners
+
+[SWEN3.Paperless.RabbitMq.Tests/**/*.cs]
+
+# Disable ConfigureAwait warnings in tests
+dotnet_diagnostic.VSTHRD111.severity = none
+# Disable sync-over-async and threading warnings in tests
+dotnet_diagnostic.VSTHRD002.severity = none
+dotnet_diagnostic.VSTHRD003.severity = none
+dotnet_diagnostic.MA0134.severity = none
+dotnet_diagnostic.VSTHRD110.severity = none
+
+# Allow file naming flexibility in tests
+dotnet_diagnostic.MA0048.severity = none
+
+# Test-specific exceptions
+dotnet_diagnostic.CA1852.severity = none
+dotnet_diagnostic.MA0053.severity = none
+dotnet_diagnostic.CA2000.severity = none
+dotnet_diagnostic.VSTHRD200.severity = none
+dotnet_diagnostic.MA0032.severity = none
+
+# Silence additional test noise (CT, disposables, comparers, string culture)
+dotnet_diagnostic.MA0040.severity = none
+dotnet_diagnostic.MA0002.severity = none
+dotnet_diagnostic.CA1816.severity = none
+dotnet_diagnostic.MA0074.severity = none
+dotnet_diagnostic.MA0076.severity = none
+dotnet_diagnostic.MA0006.severity = none
+dotnet_diagnostic.MA0079.severity = none
+
+# Allow underscores in test method names
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.IDE1006.severity = none

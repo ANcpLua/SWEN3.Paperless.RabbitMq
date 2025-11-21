@@ -1,0 +1,66 @@
+<Project>
+  <!--
+    Centralized Build Configuration for SWEN3.Paperless.RabbitMq
+    This file applies to all projects in the solution.
+
+    Strategy: Modern .NET 10 Analyzer Stack (Clean Trinity)
+    - Built-in .NET Analyzers (NetAnalyzers 10.0.x via SDK)
+    - Meziantou.Analyzer (2.0.254+) - Performance, Security, Modern C# 14
+    - Roslynator.Analyzers (4.14.1+) - Simplification & Refactoring
+    - MS.VisualStudio.Threading.Analyzers (17.14.15+) - Async correctness
+
+    ErrorProne.NET excluded (overlaps with async/nullability checks, beta quality).
+    SonarLint disabled in IDE (rely on MSBuild analyzers only).
+  -->
+
+  <PropertyGroup>
+    <!-- .NET & C# Configuration -->
+    <LangVersion>latestMajor</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Code Analysis Configuration -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Meziantou Configuration: Enable all rules by default -->
+    <MeziantouAnalysisMode>All</MeziantouAnalysisMode>
+
+    <!-- Build Configuration: "Never break" philosophy -->
+    <!-- TreatWarningsAsErrors is set per-project, not globally -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Core Analyzers: The "Clean Trinity" (Modern .NET 10 Stack)
+      These apply to ALL projects in the solution
+    -->
+
+    <!-- Meziantou: Performance, Security, Modern C# 14 Best Practices -->
+    <PackageReference Include="Meziantou.Analyzer" Version="2.0.254">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- Roslynator: Code Simplification, Readability, Refactoring -->
+    <PackageReference Include="Roslynator.Analyzers" Version="4.14.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- Threading: Async/Await Correctness (SSE + RabbitMQ = heavy async) -->
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!--
+    Performance Optimization: Report Analyzer Activity
+    Enable with: dotnet build /bl /p:ReportAnalyzer=true
+  -->
+  <PropertyGroup Condition="'$(ReportAnalyzer)' == 'true'">
+    <ReportAnalyzer>true</ReportAnalyzer>
+  </PropertyGroup>
+</Project>

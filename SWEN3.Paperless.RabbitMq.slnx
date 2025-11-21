@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SWEN3.Paperless.RabbitMq.Tests/SWEN3.Paperless.RabbitMq.Tests.csproj" />
+  <Project Path="SWEN3.Paperless.RabbitMq/SWEN3.Paperless.RabbitMq.csproj" />
+</Solution>

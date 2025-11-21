@@ -1,0 +1,85 @@
+name: Tests and Coverage
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Install libssl
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev
+
+      - name: Restore dependencies
+        run: |
+          dotnet restore SWEN3.Paperless.RabbitMq.sln
+
+      - name: Build
+        run: |
+          dotnet build SWEN3.Paperless.RabbitMq.sln --no-restore --configuration Release
+
+      - name: Run tests on all frameworks (validation)
+        run: |
+          dotnet test SWEN3.Paperless.RabbitMq.sln --no-build --configuration Release \
+            --logger:"console;verbosity=detailed"
+
+      - name: Run tests with coverage on net9.0 (fallback path)
+        run: |
+          dotnet test SWEN3.Paperless.RabbitMq.Tests/SWEN3.Paperless.RabbitMq.Tests.csproj \
+            --no-build \
+            --configuration Release \
+            --framework net9.0 \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage-net9
+
+      - name: Run tests with coverage on net10.0 (NET10 path)
+        run: |
+          dotnet test SWEN3.Paperless.RabbitMq.Tests/SWEN3.Paperless.RabbitMq.Tests.csproj \
+            --no-build \
+            --configuration Release \
+            --framework net10.0 \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage-net10
+
+      - name: Merge coverage reports
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          # Collect coverage files with lines-covered > 0 and join with semicolons
+          REPORTS=$(python3 - <<'PY'
+          import xml.etree.ElementTree as ET, pathlib, sys
+          files = sorted(pathlib.Path(".").glob("coverage-net*/**/coverage.cobertura.xml"))
+          keep = []
+          for f in files:
+              root = ET.parse(f).getroot()
+              if int(root.get("lines-covered", "0")) > 0:
+                  keep.append(str(f))
+          if not keep:
+              sys.exit("No non-empty coverage files found")
+          print(";".join(keep))
+          PY
+          )
+          reportgenerator -reports:"$REPORTS" -targetdir:./coverage-merged -reporttypes:Cobertura
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage-merged/Cobertura.xml
+          fail_ci_if_error: false
+          disable_search: true
