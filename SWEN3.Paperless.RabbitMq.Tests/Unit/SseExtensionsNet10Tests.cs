@@ -1,11 +1,11 @@
 namespace SWEN3.Paperless.RabbitMq.Tests.Unit;
 
 [SuppressMessage("Design", "MA0051:Method is too long")]
-public class SseExtensionsNet10Tests
+public static class SseExtensionsNet10Tests
 {
 #if NET10_0_OR_GREATER
     [Fact]
-    public async Task MapSse_Net10_ShouldStreamEventsUsingNativeApi()
+    public static async Task MapSse_Net10_ShouldStreamEventsUsingNativeApi()
     {
         // Arrange
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -25,49 +25,31 @@ public class SseExtensionsNet10Tests
         // Act
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
-        // Publish repeatedly until subscriber connects
-        var publisherTask = Task.Run(async () =>
-        {
-            try
-            {
-                while (!cts.Token.IsCancellationRequested)
-                {
-                    await Task.Delay(50, cts.Token);
-                    sseStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
-        }, CancellationToken.None);
+        // Wait for client to connect
+        while (sseStream.ClientCount == 0)
+            await Task.Delay(50, cts.Token);
 
-        try
-        {
-            using var response = await responseTask;
-            response.EnsureSuccessStatusCode();
-            response.Content.Headers.ContentType?.MediaType.Should().Be("text/event-stream");
+        // Publish once
+        sseStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
 
-            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
-            using var reader = new StreamReader(stream, Encoding.UTF8);
+        using var response = await responseTask;
+        response.EnsureSuccessStatusCode();
+        response.Content.Headers.ContentType?.MediaType.Should().Be("text/event-stream");
 
-            var line1 = await reader.ReadLineAsync(cts.Token);
-            var line2 = await reader.ReadLineAsync(cts.Token);
-            var line3 = await reader.ReadLineAsync(cts.Token);
+        await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
 
-            line1.Should().Be("event: test-event");
-            line2.Should().Be("data: {\"id\":1,\"msg\":\"Hello\"}");
-            line3.Should().BeEmpty();
-        }
-        finally
-        {
-            await cts.CancelAsync();
-            await publisherTask;
-        }
+        var line1 = await reader.ReadLineAsync(cts.Token);
+        var line2 = await reader.ReadLineAsync(cts.Token);
+        var line3 = await reader.ReadLineAsync(cts.Token);
+
+        line1.Should().Be("event: test-event");
+        line2.Should().Be("data: {\"id\":1,\"msg\":\"Hello\"}");
+        line3.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task MapSse_Net10_ShouldStreamMultipleEvents()
+    public static async Task MapSse_Net10_ShouldStreamMultipleEvents()
     {
         // Arrange
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -94,70 +76,52 @@ public class SseExtensionsNet10Tests
             new Messages.SseTestEvent { Id = 3, Message = "Third" }
         };
 
-        // Publish repeatedly
-        var publisherTask = Task.Run(async () =>
+        // Wait for client to connect
+        while (sseStream.ClientCount == 0)
+            await Task.Delay(50, cts.Token);
+
+        // Publish events once
+        foreach (var evt in events)
         {
-            try
-            {
-                while (!cts.Token.IsCancellationRequested)
-                {
-                    await Task.Delay(50, cts.Token);
-                    foreach (var evt in events)
-                    {
-                        sseStream.Publish(evt);
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
-        }, CancellationToken.None);
-
-        try
-        {
-            using var response = await responseTask;
-            response.EnsureSuccessStatusCode();
-            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
-            using var reader = new StreamReader(stream, Encoding.UTF8);
-
-            // Read first event
-            var event1Line1 = await reader.ReadLineAsync(cts.Token);
-            var data1Line1 = await reader.ReadLineAsync(cts.Token);
-            var blank1 = await reader.ReadLineAsync(cts.Token);
-
-            // Read second event
-            var event2Line1 = await reader.ReadLineAsync(cts.Token);
-            var data2Line1 = await reader.ReadLineAsync(cts.Token);
-            var blank2 = await reader.ReadLineAsync(cts.Token);
-
-            // Read third event
-            var event3Line1 = await reader.ReadLineAsync(cts.Token);
-            var data3Line1 = await reader.ReadLineAsync(cts.Token);
-            var blank3 = await reader.ReadLineAsync(cts.Token);
-
-            // Assert
-            event1Line1.Should().Be("event: test-event");
-            data1Line1.Should().Be("data: {\"id\":1,\"msg\":\"First\"}");
-            blank1.Should().BeEmpty();
-
-            event2Line1.Should().Be("event: test-event");
-            data2Line1.Should().Be("data: {\"id\":2,\"msg\":\"Second\"}");
-            blank2.Should().BeEmpty();
-
-            event3Line1.Should().Be("event: test-event");
-            data3Line1.Should().Be("data: {\"id\":3,\"msg\":\"Third\"}");
-            blank3.Should().BeEmpty();
+            sseStream.Publish(evt);
         }
-        finally
-        {
-            await cts.CancelAsync();
-            await publisherTask;
-        }
+
+        using var response = await responseTask;
+        response.EnsureSuccessStatusCode();
+        await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+
+        // Read first event
+        var event1Line1 = await reader.ReadLineAsync(cts.Token);
+        var data1Line1 = await reader.ReadLineAsync(cts.Token);
+        var blank1 = await reader.ReadLineAsync(cts.Token);
+
+        // Read second event
+        var event2Line1 = await reader.ReadLineAsync(cts.Token);
+        var data2Line1 = await reader.ReadLineAsync(cts.Token);
+        var blank2 = await reader.ReadLineAsync(cts.Token);
+
+        // Read third event
+        var event3Line1 = await reader.ReadLineAsync(cts.Token);
+        var data3Line1 = await reader.ReadLineAsync(cts.Token);
+        var blank3 = await reader.ReadLineAsync(cts.Token);
+
+        // Assert
+        event1Line1.Should().Be("event: test-event");
+        data1Line1.Should().Be("data: {\"id\":1,\"msg\":\"First\"}");
+        blank1.Should().BeEmpty();
+
+        event2Line1.Should().Be("event: test-event");
+        data2Line1.Should().Be("data: {\"id\":2,\"msg\":\"Second\"}");
+        blank2.Should().BeEmpty();
+
+        event3Line1.Should().Be("event: test-event");
+        data3Line1.Should().Be("data: {\"id\":3,\"msg\":\"Third\"}");
+        blank3.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task MapSse_Net10_CompletesIteratorWhenClientDisconnects()
+    public static async Task MapSse_Net10_CompletesIteratorWhenClientDisconnects()
     {
         // Arrange
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -210,7 +174,7 @@ public class SseExtensionsNet10Tests
     }
 
     [Fact]
-    public async Task MapSse_Net10_CompletesNaturallyWhenStreamEnds()
+    public static async Task MapSse_Net10_CompletesNaturallyWhenStreamEnds()
     {
         // Arrange
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

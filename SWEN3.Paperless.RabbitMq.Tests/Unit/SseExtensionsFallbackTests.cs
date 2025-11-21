@@ -25,43 +25,25 @@ public class SseExtensionsFallbackTests
         // Act
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
-        // Publish repeatedly until the subscriber is definitely connected
-        var publisherTask = Task.Run(async () =>
-        {
-            try
-            {
-                while (!cts.Token.IsCancellationRequested)
-                {
-                    await Task.Delay(50, cts.Token);
-                    sseStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when the test ends
-            }
-        }, CancellationToken.None);
+        // Wait for client to connect
+        while (sseStream.ClientCount == 0)
+            await Task.Delay(50, cts.Token);
 
-        try
-        {
-            using var response = await responseTask;
-            response.EnsureSuccessStatusCode();
-            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
-            using var reader = new StreamReader(stream, Encoding.UTF8);
+        // Publish once
+        sseStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
 
-            var line1 = await reader.ReadLineAsync(cts.Token);
-            var line2 = await reader.ReadLineAsync(cts.Token);
-            var line3 = await reader.ReadLineAsync(cts.Token);
+        using var response = await responseTask;
+        response.EnsureSuccessStatusCode();
+        await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
 
-            line1.Should().Be("event: test-event");
-            line2.Should().Be("data: {\"id\":1,\"msg\":\"Hello\"}");
-            line3.Should().BeEmpty(); // The double newline
-        }
-        finally
-        {
-            await cts.CancelAsync();
-            await publisherTask;
-        }
+        var line1 = await reader.ReadLineAsync(cts.Token);
+        var line2 = await reader.ReadLineAsync(cts.Token);
+        var line3 = await reader.ReadLineAsync(cts.Token);
+
+        line1.Should().Be("event: test-event");
+        line2.Should().Be("data: {\"id\":1,\"msg\":\"Hello\"}");
+        line3.Should().BeEmpty(); // The double newline
     }
 
     [Fact]
@@ -91,61 +73,44 @@ public class SseExtensionsFallbackTests
             new Messages.SseTestEvent { Id = 2, Message = "Second" }
         };
 
-        var publisherTask = Task.Run(async () =>
+        // Wait for client to connect
+        while (sseStream.ClientCount == 0)
+            await Task.Delay(50, cts.Token);
+
+        // Publish events once
+        foreach (var evt in events)
         {
-            try
-            {
-                while (!cts.Token.IsCancellationRequested)
-                {
-                    await Task.Delay(50, cts.Token);
-                    foreach (var evt in events)
-                    {
-                        sseStream.Publish(evt);
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
-        }, CancellationToken.None);
-
-        try
-        {
-            using var response = await responseTask;
-
-            // Assert headers
-            response.EnsureSuccessStatusCode();
-            response.Headers.CacheControl?.NoCache.Should().BeTrue();
-            response.Headers.Connection.Should().Contain("keep-alive");
-            response.Content.Headers.ContentType?.MediaType.Should().Be("text/event-stream");
-
-            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
-            using var reader = new StreamReader(stream, Encoding.UTF8);
-
-            // Read first event
-            var event1 = await reader.ReadLineAsync(cts.Token);
-            var data1 = await reader.ReadLineAsync(cts.Token);
-            var blank1 = await reader.ReadLineAsync(cts.Token);
-
-            event1.Should().Be("event: multi-event");
-            data1.Should().Be("data: {\"id\":1,\"msg\":\"First\"}");
-            blank1.Should().BeEmpty();
-
-            // Read second event
-            var event2 = await reader.ReadLineAsync(cts.Token);
-            var data2 = await reader.ReadLineAsync(cts.Token);
-            var blank2 = await reader.ReadLineAsync(cts.Token);
-
-            event2.Should().Be("event: multi-event");
-            data2.Should().Be("data: {\"id\":2,\"msg\":\"Second\"}");
-            blank2.Should().BeEmpty();
+            sseStream.Publish(evt);
         }
-        finally
-        {
-            await cts.CancelAsync();
-            await publisherTask;
-        }
+
+        using var response = await responseTask;
+
+        // Assert headers
+        response.EnsureSuccessStatusCode();
+        response.Headers.CacheControl?.NoCache.Should().BeTrue();
+        response.Headers.Connection.Should().Contain("keep-alive");
+        response.Content.Headers.ContentType?.MediaType.Should().Be("text/event-stream");
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+
+        // Read first event
+        var event1 = await reader.ReadLineAsync(cts.Token);
+        var data1 = await reader.ReadLineAsync(cts.Token);
+        var blank1 = await reader.ReadLineAsync(cts.Token);
+
+        event1.Should().Be("event: multi-event");
+        data1.Should().Be("data: {\"id\":1,\"msg\":\"First\"}");
+        blank1.Should().BeEmpty();
+
+        // Read second event
+        var event2 = await reader.ReadLineAsync(cts.Token);
+        var data2 = await reader.ReadLineAsync(cts.Token);
+        var blank2 = await reader.ReadLineAsync(cts.Token);
+
+        event2.Should().Be("event: multi-event");
+        data2.Should().Be("data: {\"id\":2,\"msg\":\"Second\"}");
+        blank2.Should().BeEmpty();
     }
 
     [Fact]

@@ -10,7 +10,7 @@ internal sealed class FakeCompletableSseStream<T> : ISseStream<T> where T : clas
 {
     private readonly Channel<T> _channel = Channel.CreateUnbounded<T>();
     private readonly Dictionary<Guid, ChannelReader<T>> _subscribers = new();
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     /// <summary>
     ///     Gets the current number of active subscribers.
