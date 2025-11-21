@@ -47,6 +47,7 @@ public class SseExtensionsFallbackTests
     }
 
     [Fact]
+    [SuppressMessage("Design", "MA0051:Method is too long")]
     public async Task MapSse_Fallback_ValidatesHeadersAndMultiEventPayload()
     {
         // Arrange
@@ -120,7 +121,7 @@ public class SseExtensionsFallbackTests
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-        var fakeStream = new Helpers.FakeCompletableSseStream<Messages.SseTestEvent>();
+        var fakeStream = new FakeCompletableSseStream<Messages.SseTestEvent>();
 
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
             configureServices: services => services.AddSingleton<ISseStream<Messages.SseTestEvent>>(fakeStream),

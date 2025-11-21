@@ -4,6 +4,20 @@ namespace SWEN3.Paperless.RabbitMq.Tests.Unit;
 public static class SseExtensionsNet10Tests
 {
 #if NET10_0_OR_GREATER
+    private static async Task WaitForClientsAsync(ISseStream<Messages.SseTestEvent> stream, int expected, CancellationToken ct)
+    {
+        var start = DateTime.UtcNow;
+        while (stream.ClientCount < expected)
+        {
+            if (DateTime.UtcNow - start > TimeSpan.FromSeconds(5))
+            {
+                throw new TimeoutException("Client did not connect within timeout");
+            }
+
+            await Task.Delay(50, ct);
+        }
+    }
+
     [Fact]
     public static async Task MapSse_Net10_ShouldStreamEventsUsingNativeApi()
     {
@@ -25,9 +39,7 @@ public static class SseExtensionsNet10Tests
         // Act
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
-        // Wait for client to connect
-        while (sseStream.ClientCount == 0)
-            await Task.Delay(50, cts.Token);
+        await WaitForClientsAsync(sseStream, 1, cts.Token);
 
         // Publish once
         sseStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
@@ -76,9 +88,7 @@ public static class SseExtensionsNet10Tests
             new Messages.SseTestEvent { Id = 3, Message = "Third" }
         };
 
-        // Wait for client to connect
-        while (sseStream.ClientCount == 0)
-            await Task.Delay(50, cts.Token);
+        await WaitForClientsAsync(sseStream, 1, cts.Token);
 
         // Publish events once
         foreach (var evt in events)
@@ -171,6 +181,50 @@ public static class SseExtensionsNet10Tests
         {
             await publisherTask;
         }
+    }
+
+    [Fact]
+    public static async Task MapSse_Net10_RequestAborted_CompletesStream()
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+        var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
+            configureServices: null,
+            configureEndpoints: e => e.MapSse<Messages.SseTestEvent>("/sse",
+                m => new { m.Id, m.Message },
+                _ => "evt-abort"));
+
+        using var _ = host;
+        var client = server.CreateClient();
+        client.Timeout = Timeout.InfiniteTimeSpan;
+        var sseStream = host.Services.GetRequiredService<ISseStream<Messages.SseTestEvent>>();
+
+        var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
+
+        await WaitForClientsAsync(sseStream, 1, cts.Token);
+
+        sseStream.Publish(new Messages.SseTestEvent { Id = 2, Message = "Abort" });
+
+        using var resp = await responseTask;
+        resp.EnsureSuccessStatusCode();
+        await using var body = await resp.Content.ReadAsStreamAsync(cts.Token);
+        using var reader = new StreamReader(body);
+
+        var eventLine = await reader.ReadLineAsync(cts.Token);
+        var dataLine = await reader.ReadLineAsync(cts.Token);
+        var blankLine = await reader.ReadLineAsync(cts.Token);
+
+        eventLine.Should().Be("event: evt-abort");
+        dataLine.Should().Be("data: {\"id\":2,\"message\":\"Abort\"}");
+        blankLine.Should().BeEmpty();
+
+        // Abort request to trigger RequestAborted callback and end the stream
+        await cts.CancelAsync();
+
+        // Further reads should not yield data; cancellation should surface
+        Func<Task> readMore = async () => await reader.ReadLineAsync(cts.Token);
+        await readMore.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]

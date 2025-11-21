@@ -1,5 +1,4 @@
 using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
 
 namespace SWEN3.Paperless.RabbitMq.Tests.Helpers;
 

@@ -38,6 +38,15 @@ jobs:
           dotnet test SWEN3.Paperless.RabbitMq.sln --no-build --configuration Release \
             --logger:"console;verbosity=detailed"
 
+      - name: Run tests with coverage on net8.0 (fallback path)
+        run: |
+          dotnet test SWEN3.Paperless.RabbitMq.Tests/SWEN3.Paperless.RabbitMq.Tests.csproj \
+            --no-build \
+            --configuration Release \
+            --framework net8.0 \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage-net8
+
       - name: Run tests with coverage on net9.0 (fallback path)
         run: |
           dotnet test SWEN3.Paperless.RabbitMq.Tests/SWEN3.Paperless.RabbitMq.Tests.csproj \
