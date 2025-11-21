@@ -415,6 +415,13 @@ dotnet_diagnostic.CA1866.severity = warning
 dotnet_diagnostic.CA1867.severity = warning
 dotnet_diagnostic.CA1868.severity = warning
 dotnet_diagnostic.CA1869.severity = warning
+dotnet_diagnostic.CA1870.severity = warning
+dotnet_diagnostic.CA1871.severity = warning
+dotnet_diagnostic.CA1872.severity = warning
+dotnet_diagnostic.CA1873.severity = warning # Critical for SSE/RabbitMQ logging
+dotnet_diagnostic.CA1874.severity = warning
+dotnet_diagnostic.CA1875.severity = warning
+dotnet_diagnostic.CA1877.severity = warning
 
 # ------------------------------------------------------------------
 # Reliability - Critical

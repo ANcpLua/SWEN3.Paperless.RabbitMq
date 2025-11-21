@@ -38,7 +38,7 @@
     -->
 
     <!-- Meziantou: Performance, Security, Modern C# 14 Best Practices -->
-    <PackageReference Include="Meziantou.Analyzer" Version="2.0.254">
+    <PackageReference Include="Meziantou.Analyzer" Version="2.0.256">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

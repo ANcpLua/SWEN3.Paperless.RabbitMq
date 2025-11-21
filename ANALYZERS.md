@@ -2,7 +2,7 @@
 
 **Philosophy:** "Zero Tolerance for Real Bugs, Zero Care About Style"
 **Strategy:** CA + VSTHRD + MA + RCS (bugs only) - Modern .NET 10/C# 14 analyzer stack
-**Last Updated:** November 20, 2025
+**Last Updated:** November 22, 2025
 
 ## Core Principle
 
@@ -25,7 +25,7 @@ We don't care about:
 | Package | Version | Purpose | Justification |
 |---------|---------|---------|---------------|
 | **Built-in .NET Analyzers** | 10.0.x (SDK) | Performance, reliability, security (CA rules) | Maintained by Microsoft, .NET 10 GA quality |
-| **Meziantou.Analyzer** | 2.0.254+ | Modern C# 14, perf, security, culture-sensitive APIs | Best-in-class for modern C#, actively maintained |
+| **Meziantou.Analyzer** | 2.0.256+ | Modern C# 14, perf, security, culture-sensitive APIs | Best-in-class for modern C#, actively maintained |
 | **Roslynator.Analyzers** | 4.14.1+ | Code simplification, readability hints | Complements Meziantou (refactoring suggestions) |
 | **MS.VisualStudio.Threading.Analyzers** | 17.14.15+ | Async/await correctness, ConfigureAwait, deadlock prevention | Critical for SSE + RabbitMQ async patterns |
 
@@ -224,6 +224,13 @@ Examples:
 | CA1860 | Avoid Enumerable.Any() | ⚠️ Warning |
 | CA1861 | Avoid constant arrays as arguments | ⚠️ Warning |
 | CA1869 | Cache JsonSerializerOptions | ⚠️ Warning |
+| CA1870 | Use cached SearchValues instance | ⚠️ Warning |
+| CA1871 | Do not pass nullable struct to ArgumentNullException.ThrowIfNull | ⚠️ Warning |
+| CA1872 | Prefer Convert.ToHexString alternatives | ⚠️ Warning |
+| CA1873 | Avoid potentially expensive logging | ⚠️ Warning |
+| CA1874 | Use Regex.IsMatch | ⚠️ Warning |
+| CA1875 | Use Regex.Count | ⚠️ Warning |
+| CA1877 | Use Path.Combine or Path.Join overloads | ⚠️ Warning |
 
 ### Reliability (CA20xx)
 
@@ -299,7 +306,7 @@ Examples:
 ### Checking for Updates
 
 ```bash
-# Check analyzer versions
+# Check analyzer versions (uses .slnx by default)
 dotnet list package --outdated
 
 # Update to latest
@@ -307,6 +314,17 @@ dotnet add package Meziantou.Analyzer
 dotnet add package Roslynator.Analyzers
 dotnet add package Microsoft.VisualStudio.Threading.Analyzers
 ```
+
+**Note:** Project uses `.slnx` (modern XML solution format) as primary, with legacy `.sln` maintained for compatibility.
+
+**IDE Compatibility (.slnx support):**
+- ✅ **Visual Studio 2022** v17.13+ (or v17.10+ with preview feature enabled)
+- ✅ **Rider** 2024.2.6+ (October 2024)
+- ✅ **VS Code** with C# Dev Kit
+- ✅ **.NET CLI** (.NET SDK 9.0.200+)
+- ❌ **Visual Studio 2019** and earlier (requires `.sln`)
+- ❌ **Rider** < 2024.2.6 (requires `.sln`)
+- ❌ **Many CI/CD tools** and third-party plugins (requires `.sln`)
 
 ### Performance Profiling
 
@@ -342,7 +360,7 @@ A: Only if you need stricter nullability/concurrency checks and can tolerate bet
 
 ## References
 
-- [Meziantou.Analyzer Rules](https://github.com/meziantou/Meziantou.Analyzer/blob/main/docs/Rules/)
-- [Roslynator Rules](https://github.com/dotnet/roslynator/blob/main/docs/analyzers/README.md)
-- [VS.Threading Rules](https://github.com/microsoft/vs-threading/blob/main/doc/analyzers/index.md)
+- [Meziantou.Analyzer Rules](https://github.com/meziantou/Meziantou.Analyzer/tree/main/docs)
+- [Roslynator Analyzers](https://josefpihrt.github.io/docs/roslynator/analyzers/)
+- [VS.Threading Rules](https://microsoft.github.io/vs-threading/analyzers/) (Primary) / [GitHub Docs](https://github.com/microsoft/vs-threading/tree/main/doc/analyzers) (Secondary)
 - [.NET Code Analysis (CA rules)](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/)
