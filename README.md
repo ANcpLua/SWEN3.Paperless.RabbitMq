@@ -1,7 +1,7 @@
 [![codecov](https://codecov.io/gh/ANcpLua/SWEN3.Paperless.RabbitMq/branch/main/graph/badge.svg?token=lgxIXBnFrn)](https://codecov.io/gh/ANcpLua/SWEN3.Paperless.RabbitMq)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-7C3AED)](https://dotnet.microsoft.com/download/dotnet/10.0)[![.NET 9](https://img.shields.io/badge/-9.0-6366F1)](https://dotnet.microsoft.com/download/dotnet/9.0)[![.NET 8](https://img.shields.io/badge/-8.0-512BD4)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![NuGet](https://img.shields.io/nuget/v/SWEN3.Paperless.RabbitMq?label=NuGet&color=0891B2)](https://www.nuget.org/packages/SWEN3.Paperless.RabbitMq/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](Microsoft.Extensions.Http.Resilience (>= 10.0.0)https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq/blob/main/LICENSE)
 
 [![Star this repo](https://img.shields.io/github/stars/ANcpLua/SWEN3.Paperless.RabbitMq?style=social)](https://github.com/ANcpLua/SWEN3.Paperless.RabbitMq/stargazers)
 
