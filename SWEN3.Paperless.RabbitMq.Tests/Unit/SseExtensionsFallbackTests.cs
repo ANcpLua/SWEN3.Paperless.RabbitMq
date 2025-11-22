@@ -1,11 +1,11 @@
 namespace SWEN3.Paperless.RabbitMq.Tests.Unit;
 
 [SuppressMessage("Design", "MA0051:Method is too long")]
-public class SseExtensionsFallbackTests
+public static class SseExtensionsFallbackTests
 {
 #if !NET10_0_OR_GREATER
     [Fact]
-    public async Task MapSse_Fallback_ShouldWriteCorrectSseFormat()
+    public static async Task MapSse_Fallback_ShouldWriteCorrectSseFormat()
     {
         // Arrange
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -48,7 +48,7 @@ public class SseExtensionsFallbackTests
 
     [Fact]
     [SuppressMessage("Design", "MA0051:Method is too long")]
-    public async Task MapSse_Fallback_ValidatesHeadersAndMultiEventPayload()
+    public static async Task MapSse_Fallback_ValidatesHeadersAndMultiEventPayload()
     {
         // Arrange
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -115,7 +115,7 @@ public class SseExtensionsFallbackTests
     }
 
     [Fact]
-    public async Task MapSse_Fallback_CompletesNaturallyWhenStreamEnds()
+    public static async Task MapSse_Fallback_CompletesNaturallyWhenStreamEnds()
     {
         // Arrange
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

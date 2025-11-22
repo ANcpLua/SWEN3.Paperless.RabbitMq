@@ -24,7 +24,7 @@ namespace SWEN3.Paperless.RabbitMq.GenAI;
 ///         <item>Graceful shutdown on cancellation token requests</item>
 ///     </list>
 /// </remarks>
-public sealed class GenAIWorker : BackgroundService
+public sealed partial class GenAIWorker : BackgroundService
 {
     private readonly IRabbitMqConsumerFactory _consumerFactory;
     private readonly ILogger<GenAIWorker> _logger;
@@ -119,12 +119,12 @@ public sealed class GenAIWorker : BackgroundService
     {
         if (string.IsNullOrWhiteSpace(command.Text))
         {
-            _logger.LogWarning("Received GenAI command for document {DocumentId} with empty text", command.DocumentId);
+            GenAIWorkerLog.EmptyText(_logger, command.DocumentId);
             await consumer.AckAsync().ConfigureAwait(false);
             return;
         }
 
-        _logger.LogInformation("Generating summary for document {DocumentId}", command.DocumentId);
+        GenAIWorkerLog.GeneratingSummary(_logger, command.DocumentId);
 
         try
         {
@@ -137,12 +137,11 @@ public sealed class GenAIWorker : BackgroundService
             await PublishResultAsync(resultEvent).ConfigureAwait(false);
             await consumer.AckAsync().ConfigureAwait(false);
 
-            _logger.LogInformation("Successfully processed document {DocumentId} - Summary: {HasSummary}",
-                command.DocumentId, summary is not null);
+            GenAIWorkerLog.Processed(_logger, command.DocumentId, summary is not null);
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "Transient GenAI failure for document {DocumentId}, requeueing", command.DocumentId);
+            GenAIWorkerLog.TransientFailure(_logger, ex, command.DocumentId);
             await consumer.NackAsync().ConfigureAwait(false);
         }
         catch (TaskCanceledException) when (ct.IsCancellationRequested)
@@ -151,7 +150,7 @@ public sealed class GenAIWorker : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fatal GenAI failure for document {DocumentId}, discarding", command.DocumentId);
+            GenAIWorkerLog.FatalFailure(_logger, ex, command.DocumentId);
 
             var failureEvent = new GenAIEvent(command.DocumentId, Summary: null, DateTimeOffset.UtcNow, ex.Message);
             try
@@ -160,8 +159,7 @@ public sealed class GenAIWorker : BackgroundService
             }
             catch (Exception pubEx)
             {
-                _logger.LogError(pubEx, "Failed to publish failure event for document {DocumentId}",
-                    command.DocumentId);
+                GenAIWorkerLog.PublishFailureEventFailed(_logger, pubEx, command.DocumentId);
             }
 
             await consumer.NackAsync(requeue: false).ConfigureAwait(false);
@@ -182,4 +180,31 @@ public sealed class GenAIWorker : BackgroundService
     ///     Uses <see cref="RabbitMqSchema.GenAIEventRouting"/> as the routing key for downstream consumers.
     /// </remarks>
     private async Task PublishResultAsync(GenAIEvent genAiEvent) => await _publisher.PublishAsync(RabbitMqSchema.GenAIEventRouting, genAiEvent).ConfigureAwait(false);
+
+    internal static partial class GenAIWorkerLog
+    {
+        [LoggerMessage(EventId = 3001, Level = LogLevel.Warning,
+            Message = "Received GenAI command for document {DocumentId} with empty text")]
+        public static partial void EmptyText(ILogger logger, Guid documentId);
+
+        [LoggerMessage(EventId = 3002, Level = LogLevel.Information,
+            Message = "Generating summary for document {DocumentId}")]
+        public static partial void GeneratingSummary(ILogger logger, Guid documentId);
+
+        [LoggerMessage(EventId = 3003, Level = LogLevel.Information,
+            Message = "Successfully processed document {DocumentId} - Summary: {HasSummary}")]
+        public static partial void Processed(ILogger logger, Guid documentId, bool hasSummary);
+
+        [LoggerMessage(EventId = 3004, Level = LogLevel.Warning,
+            Message = "Transient GenAI failure for document {DocumentId}, requeueing")]
+        public static partial void TransientFailure(ILogger logger, Exception exception, Guid documentId);
+
+        [LoggerMessage(EventId = 3005, Level = LogLevel.Error,
+            Message = "Fatal GenAI failure for document {DocumentId}, discarding")]
+        public static partial void FatalFailure(ILogger logger, Exception exception, Guid documentId);
+
+        [LoggerMessage(EventId = 3006, Level = LogLevel.Error,
+            Message = "Failed to publish failure event for document {DocumentId}")]
+        public static partial void PublishFailureEventFailed(ILogger logger, Exception exception, Guid documentId);
+    }
 }

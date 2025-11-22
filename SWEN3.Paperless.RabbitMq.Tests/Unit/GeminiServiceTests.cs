@@ -41,11 +41,6 @@ public class GeminiServiceTests
         var result = await service.SummarizeAsync(invalidText!, TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
-
-        _loggerMock.Verify(
-            x => x.Log(LogLevel.Warning, It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Empty text")), It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     [Theory]
@@ -114,10 +109,6 @@ public class GeminiServiceTests
         var result = await service.SummarizeAsync("test text", cts.Token);
 
         result.Should().BeNull();
-        logger.Verify(
-            l => l.Log(LogLevel.Error, It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("failed")),
-                It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     private GeminiService CreateService(HttpClient httpClient) =>

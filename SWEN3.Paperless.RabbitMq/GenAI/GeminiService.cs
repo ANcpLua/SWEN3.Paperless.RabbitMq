@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -7,28 +8,18 @@ namespace SWEN3.Paperless.RabbitMq.GenAI;
 
 /// <summary>
 ///     Google Gemini AI implementation of <see cref="ITextSummarizer" /> for document summarization.
-///     <para>
-///         Provides structured text summarization with automatic retry logic, timeout handling, and robust error
-///         recovery.
-///     </para>
-///     <para>Integrates with Google's Generative Language API using the Gemini 2.0 Flash model by default.</para>
+///     <para>Resilience (retries, circuit breaker, timeouts) is handled by Microsoft.Extensions.Http.Resilience.</para>
 /// </summary>
-/// <remarks>
-///     Resilience (retries, circuit breaker, timeouts) is handled automatically by
-///     Microsoft.Extensions.Http.Resilience via AddStandardResilienceHandler.
-/// </remarks>
-public sealed class GeminiService : ITextSummarizer
+public sealed partial class GeminiService : ITextSummarizer
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GeminiService> _logger;
     private readonly GeminiOptions _options;
 
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="GeminiService" /> class.
-    /// </summary>
-    /// <param name="httpClient">The HTTP client for making API requests (configured with resilience handlers).</param>
-    /// <param name="options">Configuration options containing API key, model selection, and timeout settings.</param>
-    /// <param name="logger">Logger instance for diagnostic output and error tracking.</param>
+    /// <summary>Initializes a new instance of <see cref="GeminiService" />.</summary>
+    /// <param name="httpClient">HTTP client configured with resilience handlers.</param>
+    /// <param name="options">Gemini API options (API key, model, timeout).</param>
+    /// <param name="logger">Logger for diagnostics.</param>
     public GeminiService(HttpClient httpClient, IOptions<GeminiOptions> options, ILogger<GeminiService> logger)
     {
         _httpClient = httpClient;
@@ -37,66 +28,15 @@ public sealed class GeminiService : ITextSummarizer
         _httpClient.Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
     }
 
-    /// <summary>
-    ///     Asynchronously generates a structured summary of the provided OCR-extracted text using the Google Gemini AI model.
-    /// </summary>
-    /// <param name="text">
-    ///     The raw text content extracted from a document (e.g., via OCR).
-    ///     <para>
-    ///         If the text is null, empty, or whitespace, the method returns <see langword="null" /> immediately without
-    ///         making an API call.
-    ///     </para>
-    /// </param>
-    /// <param name="cancellationToken">
-    ///     A <see cref="CancellationToken" /> to observe while waiting for the API response.
-    /// </param>
-    /// <returns>
-    ///     A <see cref="Task{TResult}" /> representing the asynchronous operation. The result is a <see cref="string" />
-    ///     containing the generated summary,
-    ///     which typically includes an executive summary, key points, document type, and extracted entities.
-    ///     <para>Returns <see langword="null" /> if:</para>
-    ///     <list type="bullet">
-    ///         <item>
-    ///             <description>The input <paramref name="text" /> is invalid (null/whitespace).</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>The API call fails (non-success status code).</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>The API response is malformed or missing expected content.</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>The operation is canceled or times out.</description>
-    ///         </item>
-    ///     </list>
-    /// </returns>
-    /// <remarks>
-    ///     The summary is generated based on a specific prompt structure that requests:
-    ///     <list type="number">
-    ///         <item>
-    ///             <description>A 2-3 sentence executive summary.</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>3-5 key points.</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>Document type identification.</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>Extraction of important dates, numbers, or entities.</description>
-    ///         </item>
-    ///     </list>
-    ///     <para>
-    ///         Exceptions such as <see cref="HttpRequestException" />, <see cref="TaskCanceledException" />, and
-    ///         <see cref="JsonException" />
-    ///         are caught internally and logged, resulting in a <see langword="null" /> return value to ensure resilience.
-    ///     </para>
-    /// </remarks>
+    /// <summary>Generates a structured summary for the provided text using Gemini.</summary>
+    /// <param name="text">OCR-extracted text to summarize.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The generated summary, or null on validation/API failure.</returns>
     public async Task<string?> SummarizeAsync(string text, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
-            _logger.LogWarning("Empty text supplied to summarizer");
+            GeminiServiceLog.EmptyText(_logger);
             return null;
         }
 
@@ -112,8 +52,7 @@ public sealed class GeminiService : ITextSummarizer
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Gemini API responded {StatusCode}: {Reason}", response.StatusCode,
-                    response.ReasonPhrase);
+                GeminiServiceLog.GeminiApiError(_logger, response.StatusCode, response.ReasonPhrase);
                 return null;
             }
 
@@ -122,41 +61,37 @@ public sealed class GeminiService : ITextSummarizer
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
-            _logger.LogError(ex, "Gemini API call failed");
+            GeminiServiceLog.GeminiApiCallFailed(_logger, ex);
             return null;
         }
     }
 
-    private static string BuildPrompt(string text)
-    {
-        return $"""
-                You are a document summarization assistant for a Document Management System (DMS).
-                Your task is to analyse the following OCR-extracted text and provide a structured summary.
+    private static string BuildPrompt(string text) =>
+        $"""
+         You are a document summarization assistant for a Document Management System (DMS).
+         Your task is to analyse the following OCR-extracted text and provide a structured summary.
 
-                Instructions:
-                1. Create a concise executive summary (2-3 sentences)
-                2. List 3-5 key points from the document
-                3. Identify the document type if possible
-                4. Extract any important dates, numbers or entities mentioned
-                5. Keep the summary factual and objective - do not add interpretations
+         Instructions:
+         1. Create a concise executive summary (2-3 sentences)
+         2. List 3-5 key points from the document
+         3. Identify the document type if possible
+         4. Extract any important dates, numbers or entities mentioned
+         5. Keep the summary factual and objective - do not add interpretations
 
-                Document text:
-                ---
-                {text}
-                ---
+         Document text:
+         ---
+         {text}
+         ---
 
-                Provide the summary now.
-                """;
-    }
+         Provide the summary now.
+         """;
 
-    private static object BuildRequestBody(string prompt)
-    {
-        return new
+    private static object BuildRequestBody(string prompt) =>
+        new
         {
             contents = new[] { new { parts = new[] { new { text = prompt } } } },
             generationConfig = new { temperature = 0.3, topK = 40, topP = 0.95, maxOutputTokens = 1024 }
         };
-    }
 
     private string? ExtractSummary(string json)
     {
@@ -167,38 +102,38 @@ public sealed class GeminiService : ITextSummarizer
 
             if (!root.TryGetProperty("candidates", out var candidates))
             {
-                _logger.LogWarning("No candidates in Gemini response");
+                GeminiServiceLog.NoCandidates(_logger);
                 return null;
             }
 
             if (candidates.GetArrayLength() is 0)
             {
-                _logger.LogWarning("Empty candidates array in Gemini response");
+                GeminiServiceLog.EmptyCandidates(_logger);
                 return null;
             }
 
             var firstCandidate = candidates[0];
             if (!firstCandidate.TryGetProperty("content", out var content))
             {
-                _logger.LogWarning("No content in first candidate");
+                GeminiServiceLog.NoContent(_logger);
                 return null;
             }
 
             if (!content.TryGetProperty("parts", out var parts))
             {
-                _logger.LogWarning("No parts in content");
+                GeminiServiceLog.NoParts(_logger);
                 return null;
             }
 
             if (parts.GetArrayLength() is 0)
             {
-                _logger.LogWarning("Empty parts array in content");
+                GeminiServiceLog.EmptyParts(_logger);
                 return null;
             }
 
             if (!parts[0].TryGetProperty("text", out var textElement))
             {
-                _logger.LogWarning("No text in first part");
+                GeminiServiceLog.NoText(_logger);
                 return null;
             }
 
@@ -207,8 +142,41 @@ public sealed class GeminiService : ITextSummarizer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to parse Gemini response");
+            GeminiServiceLog.ParseError(_logger, ex);
             return null;
         }
+    }
+
+    internal static partial class GeminiServiceLog
+    {
+        [LoggerMessage(EventId = 2001, Level = LogLevel.Warning, Message = "Empty text supplied to summarizer")]
+        public static partial void EmptyText(ILogger logger);
+
+        [LoggerMessage(EventId = 2002, Level = LogLevel.Error, Message = "Gemini API responded {StatusCode}: {Reason}")]
+        public static partial void GeminiApiError(ILogger logger, HttpStatusCode statusCode, string? reason);
+
+        [LoggerMessage(EventId = 2003, Level = LogLevel.Error, Message = "Gemini API call failed")]
+        public static partial void GeminiApiCallFailed(ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 2004, Level = LogLevel.Warning, Message = "No candidates in Gemini response")]
+        public static partial void NoCandidates(ILogger logger);
+
+        [LoggerMessage(EventId = 2005, Level = LogLevel.Warning, Message = "Empty candidates array in Gemini response")]
+        public static partial void EmptyCandidates(ILogger logger);
+
+        [LoggerMessage(EventId = 2006, Level = LogLevel.Warning, Message = "No content in first candidate")]
+        public static partial void NoContent(ILogger logger);
+
+        [LoggerMessage(EventId = 2007, Level = LogLevel.Warning, Message = "No parts in content")]
+        public static partial void NoParts(ILogger logger);
+
+        [LoggerMessage(EventId = 2008, Level = LogLevel.Warning, Message = "Empty parts array in content")]
+        public static partial void EmptyParts(ILogger logger);
+
+        [LoggerMessage(EventId = 2009, Level = LogLevel.Warning, Message = "No text in first part")]
+        public static partial void NoText(ILogger logger);
+
+        [LoggerMessage(EventId = 2010, Level = LogLevel.Error, Message = "Failed to parse Gemini response")]
+        public static partial void ParseError(ILogger logger, Exception exception);
     }
 }

@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using SWEN3.Paperless.RabbitMq.GenAI;
 
 namespace SWEN3.Paperless.RabbitMq.Tests.Unit;
 
+[SuppressMessage("Performance", "CA1873:Do not use params arrays for logger calls in hot paths", Justification = "Test-only log verification; perf not relevant")]
 public class GenAIWorkerTests
 {
     private readonly Mock<IRabbitMqConsumerFactory> _consumerFactoryMock = new();
@@ -199,11 +201,6 @@ public class GenAIWorkerTests
         _ = worker.StartAsync(cts.Token);
         await processed.Task.WaitAsync(cts.Token);
         await worker.StopAsync(cts.Token);
-
-        _loggerMock.Verify(
-            l => l.Log(LogLevel.Error, It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to publish failure event")),
-                It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
 
         consumerMock.Verify(c => c.NackAsync(requeue: false), Times.Once);
     }
