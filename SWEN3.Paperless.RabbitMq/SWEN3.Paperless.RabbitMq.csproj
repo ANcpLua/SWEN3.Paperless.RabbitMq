@@ -8,7 +8,7 @@
 
     <PackageId>SWEN3.Paperless.RabbitMq</PackageId>
     <Title>SWEN3.Paperless.RabbitMq - RabbitMQ Messaging with SSE Streaming &amp; AI Summarization</Title>
-    <Version>2.1.1</Version>
+    <Version>2.1.2</Version>
     <Authors>Alexander Nachtmann</Authors>
     <Copyright>Copyright © 2025 Alexander Nachtmann</Copyright>
 
