@@ -4,20 +4,6 @@ namespace SWEN3.Paperless.RabbitMq.Tests.Unit;
 public static class SseExtensionsNet10Tests
 {
 #if NET10_0_OR_GREATER
-    private static async Task WaitForClientsAsync(ISseStream<Messages.SseTestEvent> stream, int expected, CancellationToken ct)
-    {
-        var start = DateTime.UtcNow;
-        while (stream.ClientCount < expected)
-        {
-            if (DateTime.UtcNow - start > TimeSpan.FromSeconds(5))
-            {
-                throw new TimeoutException("Client did not connect within timeout");
-            }
-
-            await Task.Delay(50, ct);
-        }
-    }
-
     [Fact]
     public static async Task MapSse_Net10_ShouldStreamEventsUsingNativeApi()
     {
@@ -39,7 +25,7 @@ public static class SseExtensionsNet10Tests
         // Act
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
-        await WaitForClientsAsync(sseStream, 1, cts.Token);
+        await SseTestHelpers.WaitForClientsAsync(sseStream, cancellationToken: cts.Token);
 
         // Publish once
         sseStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
@@ -88,7 +74,7 @@ public static class SseExtensionsNet10Tests
             new Messages.SseTestEvent { Id = 3, Message = "Third" }
         };
 
-        await WaitForClientsAsync(sseStream, 1, cts.Token);
+        await SseTestHelpers.WaitForClientsAsync(sseStream, cancellationToken: cts.Token);
 
         // Publish events once
         foreach (var evt in events)
@@ -202,7 +188,7 @@ public static class SseExtensionsNet10Tests
 
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
-        await WaitForClientsAsync(sseStream, 1, cts.Token);
+        await SseTestHelpers.WaitForClientsAsync(sseStream, cancellationToken: cts.Token);
 
         sseStream.Publish(new Messages.SseTestEvent { Id = 2, Message = "Abort" });
 
@@ -249,8 +235,7 @@ public static class SseExtensionsNet10Tests
         // Act - Connect without cancellation token to avoid cancellation-based termination
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, CancellationToken.None);
 
-        // Wait for connection to establish
-        await Task.Delay(100, cts.Token);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, cancellationToken: cts.Token);
 
         // Publish one event
         fakeStream.Publish(new Messages.SseTestEvent { Id = 99, Message = "Done" });

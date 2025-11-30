@@ -34,17 +34,7 @@ public sealed class OcrEventStreamIntegrationTests
             }
         }, ct);
 
-        // Wait for client to connect with timeout
-        var waitStart = DateTime.UtcNow;
-        while (sseStream.ClientCount == 0)
-        {
-            if (DateTime.UtcNow - waitStart > TimeSpan.FromSeconds(10))
-                throw new TimeoutException("Client did not connect within timeout");
-            await Task.Delay(50, ct);
-        }
-
-        // Give the HTTP connection a moment to stabilize
-        await Task.Delay(100, ct);
+        await SseTestHelpers.WaitForClientsAsync(sseStream, cancellationToken: ct);
 
         var ocrEvent = new OcrEvent(Guid.NewGuid(), status, status is "Completed" ? "Text" : null,
             DateTimeOffset.UtcNow);

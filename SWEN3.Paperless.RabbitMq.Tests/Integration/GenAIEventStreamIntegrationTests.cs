@@ -33,8 +33,7 @@ public class GenAIEventStreamIntegrationTests
             }
         }, ct);
 
-        while (sseStream.ClientCount == 0)
-            await Task.Delay(50, ct);
+        await SseTestHelpers.WaitForClientsAsync(sseStream, stabilize: false, cancellationToken: ct);
 
         var genAiEvent = status == "Completed"
             ? new GenAIEvent(Guid.NewGuid(), "Test summary", DateTimeOffset.UtcNow)
@@ -60,17 +59,7 @@ public class GenAIEventStreamIntegrationTests
 
         var readTask = Task.Run(() => ReadEventsAsync(client, 3, ct), ct);
 
-        // Wait for client to connect with timeout
-        var waitStart = DateTime.UtcNow;
-        while (sseStream.ClientCount == 0)
-        {
-            if (DateTime.UtcNow - waitStart > TimeSpan.FromSeconds(10))
-                throw new TimeoutException("Client did not connect within timeout");
-            await Task.Delay(50, ct);
-        }
-
-        // Give the HTTP connection a moment to stabilize
-        await Task.Delay(100, ct);
+        await SseTestHelpers.WaitForClientsAsync(sseStream, cancellationToken: ct);
 
         sseStream.Publish(new GenAIEvent(Guid.NewGuid(), "Summary 1", DateTimeOffset.UtcNow));
         await Task.Delay(50, ct);
