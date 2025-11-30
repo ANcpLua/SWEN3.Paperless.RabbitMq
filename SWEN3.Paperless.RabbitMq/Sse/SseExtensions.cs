@@ -92,6 +92,45 @@ public static class SseExtensions
 #endif
     }
 
+    /// <summary>
+    ///     Maps a GET endpoint that streams Server-Sent Events (SSE) to connected clients,
+    ///     serializing the entire event object as the payload using camelCase naming.
+    /// </summary>
+    /// <typeparam name="T">
+    ///     The type of the event object being streamed.
+    /// </typeparam>
+    /// <param name="endpoints">
+    ///     The <see cref="IEndpointRouteBuilder"/> to add the route to.
+    /// </param>
+    /// <param name="pattern">
+    ///     The URL pattern for the endpoint (e.g., <c>"/api/events"</c>).
+    /// </param>
+    /// <param name="eventTypeSelector">
+    ///     A function that determines the SSE "event" type string (e.g., "message", "update") for the client to listen for.
+    /// </param>
+    /// <returns>
+    ///     A <see cref="RouteHandlerBuilder"/> that can be used to further configure the endpoint (e.g., adding authorization).
+    /// </returns>
+    /// <remarks>
+    ///     <para>
+    ///         This is a simplified overload that serializes the entire event object as JSON.
+    ///         Use this when you don't need to transform the event before sending.
+    ///     </para>
+    ///     <para>
+    ///         The event object is serialized using <see cref="JsonSerializerDefaults.Web"/> (camelCase property naming).
+    ///     </para>
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    ///         app.MapSse&lt;NotificationEvent&gt;("/api/notifications", evt => evt.Type);
+    ///     </code>
+    /// </example>
+    public static RouteHandlerBuilder MapSse<T>(this IEndpointRouteBuilder endpoints, string pattern,
+        Func<T, string> eventTypeSelector) where T : class
+    {
+        return endpoints.MapSse(pattern, static item => item, eventTypeSelector);
+    }
+
 #if NET10_0_OR_GREATER
     /// <summary>
     ///     .NET 10+ implementation using native ServerSentEvents API.
@@ -122,6 +161,7 @@ public static class SseExtensions
             }
         });
     }
+
 #endif
 
 #if !NET10_0_OR_GREATER

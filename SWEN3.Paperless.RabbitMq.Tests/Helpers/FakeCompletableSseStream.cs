@@ -9,6 +9,7 @@ namespace SWEN3.Paperless.RabbitMq.Tests.Helpers;
 /// </summary>
 internal sealed class FakeCompletableSseStream<T> : ISseStream<T> where T : class
 {
+    private volatile bool _disposed;
     private readonly ConcurrentDictionary<Guid, Channel<T>> _channels = new();
 
     /// <summary>
@@ -21,6 +22,9 @@ internal sealed class FakeCompletableSseStream<T> : ISseStream<T> where T : clas
     /// </summary>
     public void Publish(T message)
     {
+        if (_disposed)
+            return;
+
         foreach (var channel in _channels.Values)
         {
             channel.Writer.TryWrite(message);
@@ -30,8 +34,11 @@ internal sealed class FakeCompletableSseStream<T> : ISseStream<T> where T : clas
     /// <summary>
     ///     Subscribes a client and returns a channel reader for receiving events.
     /// </summary>
+    /// <exception cref="ObjectDisposedException">Thrown if the stream has been disposed.</exception>
     public ChannelReader<T> Subscribe(Guid clientId)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -62,5 +69,20 @@ internal sealed class FakeCompletableSseStream<T> : ISseStream<T> where T : clas
         {
             channel.Writer.TryComplete();
         }
+    }
+
+    /// <summary>
+    ///     Disposes the stream, completing all client channels.
+    /// </summary>
+    /// <returns>A <see cref="ValueTask"/> representing the asynchronous dispose operation.</returns>
+    public ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return ValueTask.CompletedTask;
+
+        _disposed = true;
+        Complete();
+        _channels.Clear();
+        return ValueTask.CompletedTask;
     }
 }

@@ -12,7 +12,7 @@ namespace SWEN3.Paperless.RabbitMq.Sse;
 /// <typeparam name="T">
 ///     The type of event object being streamed.
 /// </typeparam>
-public interface ISseStream<T>
+public interface ISseStream<T> : IAsyncDisposable
 {
     /// <summary>
     ///     Gets the number of currently active client subscriptions.
@@ -28,6 +28,7 @@ public interface ISseStream<T>
     /// <returns>
     ///     A <see cref="ChannelReader{T}"/> that the client can read from to receive asynchronous event updates.
     /// </returns>
+    /// <exception cref="ObjectDisposedException">Thrown if the stream has been disposed.</exception>
     ChannelReader<T> Subscribe(Guid clientId);
 
     /// <summary>
@@ -47,6 +48,7 @@ public interface ISseStream<T>
     /// <remarks>
     ///     The event is written to each client's individual channel. If a client's channel is full or closed,
     ///     the delivery strategy (e.g., dropping the message) is determined by the implementation.
+    ///     If the stream has been disposed, this method is a no-op.
     /// </remarks>
     void Publish(T item);
 }

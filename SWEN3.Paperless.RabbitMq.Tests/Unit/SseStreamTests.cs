@@ -1,8 +1,10 @@
 namespace SWEN3.Paperless.RabbitMq.Tests.Unit;
 
-public class SseStreamTests
+public class SseStreamTests : IAsyncDisposable
 {
     private readonly SseStream<Messages.SimpleMessage> _sseStream = new();
+
+    public ValueTask DisposeAsync() => _sseStream.DisposeAsync();
 
     [Fact]
     public void Subscribe_ShouldReturnChannelReader()
@@ -84,5 +86,39 @@ public class SseStreamTests
         receivedMessages.Should().HaveCount(100); // Should match capacity
         receivedMessages[0].Id.Should().Be(ExpectedFirstMessageId); // Should start from 11
         receivedMessages[^1].Id.Should().Be(MessagesToSend); // Should end at 110
+    }
+
+    [Fact]
+    public async Task Subscribe_AfterDispose_ShouldThrowObjectDisposedException()
+    {
+        await _sseStream.DisposeAsync();
+
+        var act = () => _sseStream.Subscribe(Guid.NewGuid());
+
+        act.Should().Throw<ObjectDisposedException>();
+    }
+
+    [Fact]
+    public async Task Publish_AfterDispose_ShouldBeNoOp()
+    {
+        var reader = _sseStream.Subscribe(Guid.NewGuid());
+        await _sseStream.DisposeAsync();
+
+        _sseStream.Publish(new Messages.SimpleMessage(1)); // Should not throw
+
+        // Channel was completed by dispose, so no message available
+        reader.TryRead(out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_ShouldCompleteAllClientChannels()
+    {
+        var reader1 = _sseStream.Subscribe(Guid.NewGuid());
+        var reader2 = _sseStream.Subscribe(Guid.NewGuid());
+
+        await _sseStream.DisposeAsync();
+
+        reader1.Completion.IsCompleted.Should().BeTrue();
+        reader2.Completion.IsCompleted.Should().BeTrue();
     }
 }
