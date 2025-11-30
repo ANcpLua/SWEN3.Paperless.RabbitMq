@@ -12,7 +12,7 @@ public class GeminiServiceTests
     private readonly GeminiOptions _options = new()
     {
         ApiKey = "test-key",
-        Model = "gemini-2.0-flash",
+        Model = "gemini-2.5-flash",
         TimeoutSeconds = 5
     };
 

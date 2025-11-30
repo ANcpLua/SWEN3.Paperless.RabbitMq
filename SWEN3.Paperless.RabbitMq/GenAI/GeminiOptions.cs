@@ -30,13 +30,13 @@ public sealed class GeminiOptions
     ///     Gets or initializes the Gemini model identifier to use for text generation.
     /// </summary>
     /// <value>
-    ///     The model name. Defaults to "gemini-2.0-flash" for optimal balance of speed and quality.
+    ///     The model name. Defaults to "gemini-2.5-flash" for optimal balance of speed and quality.
     /// </value>
     /// <remarks>
-    ///     Available models include "gemini-2.0-flash", "gemini-1.5-pro", and "gemini-1.5-flash".
+    ///     Available models include "gemini-2.5-flash", "gemini-2.5-pro", and "gemini-2.5-flash-lite".
     ///     See Google AI documentation for current model availability and capabilities.
     /// </remarks>
-    public string Model { get; init; } = "gemini-2.0-flash";
+    public string Model { get; init; } = "gemini-2.5-flash";
 
     /// <summary>
     ///     Gets or initializes the timeout duration in seconds for HTTP client requests.

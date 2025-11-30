@@ -35,7 +35,7 @@ public static class GenAIExtensions
     ///     {
     ///       "Gemini": {
     ///         "ApiKey": "your-api-key",
-    ///         "Model": "gemini-2.0-flash",
+    ///         "Model": "gemini-2.5-flash",
     ///         "TimeoutSeconds": 30
     ///       }
     ///     }

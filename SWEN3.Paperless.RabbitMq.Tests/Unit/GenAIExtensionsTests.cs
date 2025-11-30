@@ -13,7 +13,7 @@ public class GenAIExtensionsTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Gemini:ApiKey"] = "test-key",
-                ["Gemini:Model"] = "gemini-2.0-flash",
+                ["Gemini:Model"] = "gemini-2.5-flash",
                 ["Gemini:TimeoutSeconds"] = "15"
             })
             .Build();
@@ -29,7 +29,7 @@ public class GenAIExtensionsTests
 
         var options = provider.GetRequiredService<IOptions<GeminiOptions>>().Value;
         options.ApiKey.Should().Be("test-key");
-        options.Model.Should().Be("gemini-2.0-flash");
+        options.Model.Should().Be("gemini-2.5-flash");
         options.TimeoutSeconds.Should().Be(15);
 
         var summarizer = provider.GetRequiredService<ITextSummarizer>();
