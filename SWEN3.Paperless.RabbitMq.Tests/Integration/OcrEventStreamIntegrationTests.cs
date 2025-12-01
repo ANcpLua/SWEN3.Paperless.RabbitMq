@@ -2,18 +2,20 @@ namespace SWEN3.Paperless.RabbitMq.Tests.Integration;
 
 public sealed class OcrEventStreamIntegrationTests
 {
+    private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(5);
+
     [Theory]
     [InlineData("Completed", "ocr-completed")]
     [InlineData("Failed", "ocr-failed")]
     [InlineData("Processing", "ocr-failed")]
     public async Task MapOcrEventStream_ShouldEmitCorrectEventType(string status, string expectedEventType)
     {
+        var fakeStream = new FakeCompletableSseStream<OcrEvent>();
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<OcrEvent>(
-            configureServices: null,
+            configureServices: s => s.AddSingleton<ISseStream<OcrEvent>>(fakeStream),
             configureEndpoints: endpoints => endpoints.MapOcrEventStream());
 
         using var _ = host;
-        var sseStream = host.Services.GetRequiredService<ISseStream<OcrEvent>>();
         var ct = TestContext.Current.CancellationToken;
 
         var readTask = Task.Run(async () =>
@@ -26,7 +28,7 @@ public sealed class OcrEventStreamIntegrationTests
 
             while (true)
             {
-                var line = await reader.ReadLineAsync(ct);
+                var line = await reader.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
                 if (line == null)
                     return null;
                 if (line.StartsWith("event:"))
@@ -34,11 +36,12 @@ public sealed class OcrEventStreamIntegrationTests
             }
         }, ct);
 
-        await SseTestHelpers.WaitForClientsAsync(sseStream, cancellationToken: ct);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, cancellationToken: ct);
 
         var ocrEvent = new OcrEvent(Guid.NewGuid(), status, status is "Completed" ? "Text" : null,
             DateTimeOffset.UtcNow);
-        sseStream.Publish(ocrEvent);
+        fakeStream.Publish(ocrEvent);
+        fakeStream.Complete();
 
         var eventLine = await readTask;
 

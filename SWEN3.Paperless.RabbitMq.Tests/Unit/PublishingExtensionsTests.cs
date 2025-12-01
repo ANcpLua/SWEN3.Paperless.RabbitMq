@@ -52,7 +52,7 @@ public class PublishingExtensionsTests
     public void OcrCommand_DeserializesWithoutCreatedAt_BackwardCompatibility()
     {
         // Simulate old JSON without CreatedAt field
-        var json = """{"JobId":"550e8400-e29b-41d4-a716-446655440000","FileName":"old.pdf","FilePath":"/old.pdf"}""";
+        const string json = """{"JobId":"550e8400-e29b-41d4-a716-446655440000","FileName":"old.pdf","FilePath":"/old.pdf"}""";
 
         var deserialized = JsonSerializer.Deserialize<OcrCommand>(json);
 

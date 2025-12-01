@@ -1,66 +1,50 @@
+using System.Text.Json.Nodes;
+
 namespace SWEN3.Paperless.RabbitMq.Tests.Integration;
 
 public class SseExtensionsTests
 {
     private const string TestEndpoint = "/sse-test";
-
-    private static async Task WaitForClientsAsync(ISseStream<Messages.SseTestEvent> stream, int expected, CancellationToken ct)
-    {
-        var start = DateTime.UtcNow;
-        while (stream.ClientCount < expected)
-        {
-            if (DateTime.UtcNow - start > TimeSpan.FromSeconds(5))
-            {
-                throw new TimeoutException("Client did not connect within timeout");
-            }
-
-            await Task.Delay(50, ct);
-        }
-    }
+    private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(5);
 
     [Fact]
     public async Task MapSse_WithPublishedEvent_ShouldStreamToClient()
     {
+        var fakeStream = new FakeCompletableSseStream<Messages.SseTestEvent>();
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
-            configureServices: null,
+            configureServices: s => s.AddSingleton<ISseStream<Messages.SseTestEvent>>(fakeStream),
             configureEndpoints: endpoints => endpoints.MapSse<Messages.SseTestEvent>(
                 TestEndpoint, evt => new { evt.Id, evt.Message }, _ => "test-event"));
 
         using var _ = host;
-        var sseStream = host.Services.GetRequiredService<ISseStream<Messages.SseTestEvent>>();
         var client = server.CreateClient();
         client.Timeout = Timeout.InfiniteTimeSpan;
         var ct = TestContext.Current.CancellationToken;
 
         var responseTask = client.GetAsync(TestEndpoint, HttpCompletionOption.ResponseHeadersRead, ct);
 
-        await WaitForClientsAsync(sseStream, 1, ct);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, cancellationToken: ct);
 
         var testEvent = new Messages.SseTestEvent { Id = 42, Message = "Hello SSE" };
-        sseStream.Publish(testEvent);
+        fakeStream.Publish(testEvent);
+        fakeStream.Complete();
 
         using var response = await responseTask;
         response.EnsureSuccessStatusCode();
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         using var reader = new StreamReader(stream, Encoding.UTF8);
 
-        var eventLine = await reader.ReadLineAsync(ct);
-        var dataLine = await reader.ReadLineAsync(ct);
-        var blankLine = await reader.ReadLineAsync(ct);
+        var eventLine = await reader.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
+        var dataLine = await reader.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
+        var blankLine = await reader.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
 
         eventLine.Should().Be("event: test-event");
         dataLine.Should().StartWith("data: ");
-        var json = dataLine["data: ".Length..];
-        using (var doc = JsonDocument.Parse(json))
-        {
-            var root = doc.RootElement;
-            root.TryGetProperty("Id", out var idPascal);
-            root.TryGetProperty("Message", out var msgPascal);
-            root.TryGetProperty("id", out var idCamel);
-            root.TryGetProperty("message", out var msgCamel);
-            (idPascal.ValueKind != JsonValueKind.Undefined ? idPascal.GetInt32() : idCamel.GetInt32()).Should().Be(42);
-            (msgPascal.ValueKind != JsonValueKind.Undefined ? msgPascal.GetString() : msgCamel.GetString()).Should().Be("Hello SSE");
-        }
+
+        var json = JsonNode.Parse(dataLine!["data: ".Length..])!;
+        (json["Id"] ?? json["id"])!.GetValue<int>().Should().Be(42);
+        (json["Message"] ?? json["message"])!.GetValue<string>().Should().Be("Hello SSE");
+
         blankLine.Should().BeEmpty();
     }
 
@@ -68,13 +52,13 @@ public class SseExtensionsTests
     [SuppressMessage("Design", "MA0051:Method is too long")]
     public async Task MapSse_MultipleClients_ShouldReceiveSameEvent()
     {
+        var fakeStream = new FakeCompletableSseStream<Messages.SseTestEvent>();
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
-            configureServices: null,
+            configureServices: s => s.AddSingleton<ISseStream<Messages.SseTestEvent>>(fakeStream),
             configureEndpoints: endpoints => endpoints.MapSse<Messages.SseTestEvent>(
                 TestEndpoint, evt => new { evt.Id, evt.Message }, _ => "test-event"));
 
         using var _ = host;
-        var sseStream = host.Services.GetRequiredService<ISseStream<Messages.SseTestEvent>>();
         var ct = TestContext.Current.CancellationToken;
 
         var client1 = server.CreateClient();
@@ -85,10 +69,11 @@ public class SseExtensionsTests
         var responseTask1 = client1.GetAsync(TestEndpoint, HttpCompletionOption.ResponseHeadersRead, ct);
         var responseTask2 = client2.GetAsync(TestEndpoint, HttpCompletionOption.ResponseHeadersRead, ct);
 
-        await WaitForClientsAsync(sseStream, 2, ct);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, expectedClients: 2, cancellationToken: ct);
 
         var testEvent = new Messages.SseTestEvent { Id = 99, Message = "Broadcast" };
-        sseStream.Publish(testEvent);
+        fakeStream.Publish(testEvent);
+        fakeStream.Complete();
 
         using var response1 = await responseTask1;
         using var response2 = await responseTask2;
@@ -101,42 +86,26 @@ public class SseExtensionsTests
         using var reader1 = new StreamReader(stream1, Encoding.UTF8);
         using var reader2 = new StreamReader(stream2, Encoding.UTF8);
 
-        var event1 = await reader1.ReadLineAsync(ct);
-        var data1 = await reader1.ReadLineAsync(ct);
-        var blank1 = await reader1.ReadLineAsync(ct);
+        var event1 = await reader1.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
+        var data1 = await reader1.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
+        var blank1 = await reader1.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
 
-        var event2 = await reader2.ReadLineAsync(ct);
-        var data2 = await reader2.ReadLineAsync(ct);
-        var blank2 = await reader2.ReadLineAsync(ct);
+        var event2 = await reader2.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
+        var data2 = await reader2.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
+        var blank2 = await reader2.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
 
         event1.Should().Be("event: test-event");
         data1.Should().StartWith("data: ");
-        var json1 = data1["data: ".Length..];
-        using (var doc = JsonDocument.Parse(json1))
-        {
-            var root = doc.RootElement;
-            root.TryGetProperty("Id", out var idPascal);
-            root.TryGetProperty("Message", out var msgPascal);
-            root.TryGetProperty("id", out var idCamel);
-            root.TryGetProperty("message", out var msgCamel);
-            (idPascal.ValueKind != JsonValueKind.Undefined ? idPascal.GetInt32() : idCamel.GetInt32()).Should().Be(99);
-            (msgPascal.ValueKind != JsonValueKind.Undefined ? msgPascal.GetString() : msgCamel.GetString()).Should().Be("Broadcast");
-        }
+        var json1 = JsonNode.Parse(data1!["data: ".Length..])!;
+        (json1["Id"] ?? json1["id"])!.GetValue<int>().Should().Be(99);
+        (json1["Message"] ?? json1["message"])!.GetValue<string>().Should().Be("Broadcast");
         blank1.Should().BeEmpty();
 
         event2.Should().Be("event: test-event");
         data2.Should().StartWith("data: ");
-        var json2 = data2["data: ".Length..];
-        using (var doc = JsonDocument.Parse(json2))
-        {
-            var root = doc.RootElement;
-            root.TryGetProperty("Id", out var idPascal);
-            root.TryGetProperty("Message", out var msgPascal);
-            root.TryGetProperty("id", out var idCamel);
-            root.TryGetProperty("message", out var msgCamel);
-            (idPascal.ValueKind != JsonValueKind.Undefined ? idPascal.GetInt32() : idCamel.GetInt32()).Should().Be(99);
-            (msgPascal.ValueKind != JsonValueKind.Undefined ? msgPascal.GetString() : msgCamel.GetString()).Should().Be("Broadcast");
-        }
+        var json2 = JsonNode.Parse(data2!["data: ".Length..])!;
+        (json2["Id"] ?? json2["id"])!.GetValue<int>().Should().Be(99);
+        (json2["Message"] ?? json2["message"])!.GetValue<string>().Should().Be("Broadcast");
         blank2.Should().BeEmpty();
     }
 }

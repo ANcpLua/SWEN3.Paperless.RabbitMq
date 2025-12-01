@@ -11,8 +11,10 @@ public static class SseExtensionsFallbackTests
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(30));
 
+        var fakeStream = new FakeCompletableSseStream<Messages.SseTestEvent>();
+
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
-            configureServices: null,
+            configureServices: s => s.AddSingleton<ISseStream<Messages.SseTestEvent>>(fakeStream),
             configureEndpoints: e => e.MapSse<Messages.SseTestEvent>("/sse",
                 evt => new { id = evt.Id, msg = evt.Message },
                 _ => "test-event"));
@@ -20,17 +22,15 @@ public static class SseExtensionsFallbackTests
         using var _ = host;
         var client = server.CreateClient();
         client.Timeout = Timeout.InfiniteTimeSpan;
-        var sseStream = host.Services.GetRequiredService<ISseStream<Messages.SseTestEvent>>();
 
         // Act
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
-        // Wait for client to connect
-        while (sseStream.ClientCount == 0)
-            await Task.Delay(50, cts.Token);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, cancellationToken: cts.Token);
 
         // Publish once
-        sseStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
+        fakeStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
+        fakeStream.Complete();
 
         using var response = await responseTask;
         response.EnsureSuccessStatusCode();
@@ -54,8 +54,10 @@ public static class SseExtensionsFallbackTests
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(30));
 
+        var fakeStream = new FakeCompletableSseStream<Messages.SseTestEvent>();
+
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
-            configureServices: null,
+            configureServices: s => s.AddSingleton<ISseStream<Messages.SseTestEvent>>(fakeStream),
             configureEndpoints: e => e.MapSse<Messages.SseTestEvent>("/sse",
                 evt => new { id = evt.Id, msg = evt.Message },
                 _ => "multi-event"));
@@ -63,7 +65,6 @@ public static class SseExtensionsFallbackTests
         using var _ = host;
         var client = server.CreateClient();
         client.Timeout = Timeout.InfiniteTimeSpan;
-        var sseStream = host.Services.GetRequiredService<ISseStream<Messages.SseTestEvent>>();
 
         // Act
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
@@ -74,15 +75,15 @@ public static class SseExtensionsFallbackTests
             new Messages.SseTestEvent { Id = 2, Message = "Second" }
         };
 
-        // Wait for client to connect
-        while (sseStream.ClientCount == 0)
-            await Task.Delay(50, cts.Token);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, cancellationToken: cts.Token);
 
         // Publish events once
         foreach (var evt in events)
         {
-            sseStream.Publish(evt);
+            fakeStream.Publish(evt);
         }
+
+        fakeStream.Complete();
 
         using var response = await responseTask;
 

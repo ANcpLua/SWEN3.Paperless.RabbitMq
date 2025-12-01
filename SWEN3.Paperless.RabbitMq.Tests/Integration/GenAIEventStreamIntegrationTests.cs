@@ -2,17 +2,19 @@ namespace SWEN3.Paperless.RabbitMq.Tests.Integration;
 
 public class GenAIEventStreamIntegrationTests
 {
+    private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(5);
+
     [Theory]
     [InlineData("Completed", "genai-completed")]
     [InlineData("Failed", "genai-failed")]
     public async Task MapGenAIEventStream_ShouldEmitCorrectEventType(string status, string expectedEventType)
     {
+        var fakeStream = new FakeCompletableSseStream<GenAIEvent>();
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<GenAIEvent>(
-            configureServices: null,
+            configureServices: s => s.AddSingleton<ISseStream<GenAIEvent>>(fakeStream),
             configureEndpoints: endpoints => endpoints.MapGenAIEventStream());
 
         using var _ = host;
-        var sseStream = host.Services.GetRequiredService<ISseStream<GenAIEvent>>();
         var client = server.CreateClient();
         var ct = TestContext.Current.CancellationToken;
 
@@ -25,7 +27,7 @@ public class GenAIEventStreamIntegrationTests
 
             while (true)
             {
-                var line = await reader.ReadLineAsync(ct);
+                var line = await reader.ReadLineAsync(ct).AsTask().WaitAsync(ReadTimeout, ct);
                 if (line == null)
                     return null;
                 if (line.StartsWith("event:"))
@@ -33,12 +35,13 @@ public class GenAIEventStreamIntegrationTests
             }
         }, ct);
 
-        await SseTestHelpers.WaitForClientsAsync(sseStream, stabilize: false, cancellationToken: ct);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, stabilize: false, cancellationToken: ct);
 
         var genAiEvent = status == "Completed"
             ? new GenAIEvent(Guid.NewGuid(), "Test summary", DateTimeOffset.UtcNow)
             : new GenAIEvent(Guid.NewGuid(), string.Empty, DateTimeOffset.UtcNow, "Service error");
-        sseStream.Publish(genAiEvent);
+        fakeStream.Publish(genAiEvent);
+        fakeStream.Complete();
 
         var eventLine = await readTask;
 
@@ -48,26 +51,27 @@ public class GenAIEventStreamIntegrationTests
     [Fact]
     public async Task MapGenAIEventStream_WithMultipleEvents_ShouldStreamInOrder()
     {
+        var fakeStream = new FakeCompletableSseStream<GenAIEvent>();
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<GenAIEvent>(
-            configureServices: null,
+            configureServices: s => s.AddSingleton<ISseStream<GenAIEvent>>(fakeStream),
             configureEndpoints: endpoints => endpoints.MapGenAIEventStream());
 
         using var _ = host;
-        var sseStream = host.Services.GetRequiredService<ISseStream<GenAIEvent>>();
         var client = server.CreateClient();
         var ct = TestContext.Current.CancellationToken;
 
         var readTask = Task.Run(() => ReadEventsAsync(client, 3, ct), ct);
 
-        await SseTestHelpers.WaitForClientsAsync(sseStream, cancellationToken: ct);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, cancellationToken: ct);
 
-        sseStream.Publish(new GenAIEvent(Guid.NewGuid(), "Summary 1", DateTimeOffset.UtcNow));
+        fakeStream.Publish(new GenAIEvent(Guid.NewGuid(), "Summary 1", DateTimeOffset.UtcNow));
         await Task.Delay(50, ct);
 
-        sseStream.Publish(new GenAIEvent(Guid.NewGuid(), "Summary 2", DateTimeOffset.UtcNow));
+        fakeStream.Publish(new GenAIEvent(Guid.NewGuid(), "Summary 2", DateTimeOffset.UtcNow));
         await Task.Delay(50, ct);
 
-        sseStream.Publish(new GenAIEvent(Guid.NewGuid(), string.Empty, DateTimeOffset.UtcNow, "Error occurred"));
+        fakeStream.Publish(new GenAIEvent(Guid.NewGuid(), string.Empty, DateTimeOffset.UtcNow, "Error occurred"));
+        fakeStream.Complete();
 
         var events = await readTask;
 
@@ -98,7 +102,7 @@ public class GenAIEventStreamIntegrationTests
 
             while (events.Count < count)
             {
-                var line = await reader.ReadLineAsync(cancellationToken);
+                var line = await reader.ReadLineAsync(cancellationToken).AsTask().WaitAsync(ReadTimeout, cancellationToken);
                 if (line == null)
                     break;
 

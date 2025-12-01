@@ -11,8 +11,10 @@ public static class SseExtensionsNet10Tests
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(30));
 
+        var fakeStream = new Helpers.FakeCompletableSseStream<Messages.SseTestEvent>();
+
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
-            configureServices: null,
+            configureServices: s => s.AddSingleton<ISseStream<Messages.SseTestEvent>>(fakeStream),
             configureEndpoints: e => e.MapSse<Messages.SseTestEvent>("/sse",
                 evt => new { id = evt.Id, msg = evt.Message },
                 _ => "test-event"));
@@ -20,15 +22,15 @@ public static class SseExtensionsNet10Tests
         using var _ = host;
         var client = server.CreateClient();
         client.Timeout = Timeout.InfiniteTimeSpan;
-        var sseStream = host.Services.GetRequiredService<ISseStream<Messages.SseTestEvent>>();
 
         // Act
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
-        await SseTestHelpers.WaitForClientsAsync(sseStream, cancellationToken: cts.Token);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, cancellationToken: cts.Token);
 
         // Publish once
-        sseStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
+        fakeStream.Publish(new Messages.SseTestEvent { Id = 1, Message = "Hello" });
+        fakeStream.Complete();
 
         using var response = await responseTask;
         response.EnsureSuccessStatusCode();
@@ -53,8 +55,10 @@ public static class SseExtensionsNet10Tests
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(30));
 
+        var fakeStream = new Helpers.FakeCompletableSseStream<Messages.SseTestEvent>();
+
         var (host, server) = await SseTestHelpers.CreateSseTestServerAsync<Messages.SseTestEvent>(
-            configureServices: null,
+            configureServices: s => s.AddSingleton<ISseStream<Messages.SseTestEvent>>(fakeStream),
             configureEndpoints: e => e.MapSse<Messages.SseTestEvent>("/sse",
                 evt => new { id = evt.Id, msg = evt.Message },
                 _ => "test-event"));
@@ -62,7 +66,6 @@ public static class SseExtensionsNet10Tests
         using var _ = host;
         var client = server.CreateClient();
         client.Timeout = Timeout.InfiniteTimeSpan;
-        var sseStream = host.Services.GetRequiredService<ISseStream<Messages.SseTestEvent>>();
 
         // Act
         var responseTask = client.GetAsync("/sse", HttpCompletionOption.ResponseHeadersRead, cts.Token);
@@ -74,13 +77,15 @@ public static class SseExtensionsNet10Tests
             new Messages.SseTestEvent { Id = 3, Message = "Third" }
         };
 
-        await SseTestHelpers.WaitForClientsAsync(sseStream, cancellationToken: cts.Token);
+        await SseTestHelpers.WaitForClientsAsync(fakeStream, cancellationToken: cts.Token);
 
         // Publish events once
         foreach (var evt in events)
         {
-            sseStream.Publish(evt);
+            fakeStream.Publish(evt);
         }
+
+        fakeStream.Complete();
 
         using var response = await responseTask;
         response.EnsureSuccessStatusCode();

@@ -42,9 +42,14 @@ internal static class SseTestHelpers
 
         try
         {
+            // PeriodicTimer is more efficient than Task.Delay in a loop:
+            // - Returns ValueTask (often zero-alloc) vs new Task per iteration
+            // - Clearer semantics: "wait for next tick" vs "delay for X ms"
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(PollingIntervalMs));
+
             while (stream.ClientCount < expectedClients)
             {
-                await Task.Delay(PollingIntervalMs, timeoutCts.Token);
+                await timer.WaitForNextTickAsync(timeoutCts.Token);
             }
 
             if (stabilize)

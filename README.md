@@ -61,9 +61,15 @@ services.AddPaperlessRabbitMq(config, includeOcrResultStream: true, includeGenAi
 ### Publishing
 
 ```csharp
+// Basic command
 var command = new OcrCommand(docId, fileName, storagePath);
 await publisher.PublishOcrCommandAsync(command);
 
+// With timestamp (v2.2.0+)
+var command = new OcrCommand(docId, fileName, storagePath, createdAt: DateTimeOffset.UtcNow);
+await publisher.PublishOcrCommandAsync(command);
+
+// Event
 var result = new OcrEvent(jobId, "Completed", text, DateTimeOffset.UtcNow);
 await publisher.PublishOcrEventAsync(result);
 ```
@@ -87,13 +93,28 @@ await foreach (var command in consumer.ConsumeAsync(cancellationToken))
 }
 ```
 
-### SSE Endpoint
+### SSE Endpoints
 
 ```csharp
-// Map endpoint
-app.MapOcrEventStream();
+// Built-in endpoints
+app.MapOcrEventStream();      // /api/v1/ocr-results
+app.MapGenAIEventStream();    // /api/v1/events/genai
 
-// Client-side
+// Custom endpoint with dynamic event types (v2.3.0+)
+app.MapSse<NotificationEvent>("/api/notifications", evt => evt.Type);
+
+// Custom endpoint with fixed event type (v2.4.0+)
+app.MapSse<HeartbeatEvent>("/api/heartbeat", "heartbeat");
+
+// Full control with payload projection
+app.MapSse<OcrEvent>("/api/ocr",
+    evt => new { evt.JobId, evt.Status },  // payload
+    evt => evt.Status == "Completed" ? "done" : "error");  // event type
+```
+
+**Client-side:**
+
+```javascript
 const eventSource = new EventSource('/api/v1/ocr-results');
 eventSource.addEventListener('ocr-completed', (event) => {
     const data = JSON.parse(event.data);
@@ -139,17 +160,56 @@ await _publisher.PublishGenAICommandAsync(genAiCommand);
 ## Message Types
 
 ```csharp
-public record OcrCommand(Guid JobId, string FileName, string FilePath);
+// OCR
+public record OcrCommand(Guid JobId, string FileName, string FilePath, DateTimeOffset? CreatedAt = null);
 public record OcrEvent(Guid JobId, string Status, string? Text, DateTimeOffset ProcessedAt);
+
+// GenAI
 public record GenAICommand(Guid DocumentId, string Text);
-public record GenAIEvent(Guid DocumentId, string? Summary, DateTimeOffset ProcessedAt, string? ErrorMessage = null);
+public record GenAIEvent(Guid DocumentId, string? Summary, DateTimeOffset GeneratedAt, string? ErrorMessage = null);
 ```
+
+## SSE MapSse Overloads
+
+| Overload | Use Case |
+|----------|----------|
+| `MapSse<T>(pattern, payloadSelector, eventTypeSelector)` | Full control over payload and per-event type |
+| `MapSse<T>(pattern, eventTypeSelector)` | Serialize whole object, dynamic event type |
+| `MapSse<T>(pattern, eventType)` | Serialize whole object, fixed event type |
 
 ## Installation
 
 ```bash
 dotnet add package SWEN3.Paperless.RabbitMq
 ```
+
+## Changelog
+
+### v2.4.0
+
+- Added `MapSse<T>(pattern, eventType)` overload for fixed event type streams
+- .NET 10: Uses optimized `TypedResults.ServerSentEvents` overload (no per-event `SseItem<T>` allocation)
+
+### v2.3.0
+
+- `ISseStream<T>` now extends `IAsyncDisposable` for graceful shutdown
+- Added `MapSse<T>(pattern, eventTypeSelector)` overload for simplified endpoint registration
+- `SseStream<T>` completes all client channels on dispose
+
+### v2.2.0
+
+- Added optional `CreatedAt` parameter to `OcrCommand` for document timestamp tracking
+- Updated default Gemini model to `gemini-2.5-flash`
+
+### v2.1.0
+
+- GenAI SSE streaming support
+
+### v2.0.0
+
+- Simplified `AddPaperlessGenAI()` registration
+- Added `Microsoft.Extensions.Http.Resilience` for automatic retry/circuit breaker
+- Configuration section renamed: `GenAI:Gemini` → `Gemini`
 
 ## License
 

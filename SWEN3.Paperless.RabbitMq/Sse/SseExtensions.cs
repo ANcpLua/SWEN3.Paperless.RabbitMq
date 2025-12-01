@@ -126,9 +126,52 @@ public static class SseExtensions
     ///     </code>
     /// </example>
     public static RouteHandlerBuilder MapSse<T>(this IEndpointRouteBuilder endpoints, string pattern,
-        Func<T, string> eventTypeSelector) where T : class
+        Func<T, string> eventTypeSelector) where T : class =>
+        endpoints.MapSse(pattern, static item => item, eventTypeSelector);
+
+    /// <summary>
+    ///     Maps a GET endpoint that streams Server-Sent Events (SSE) to connected clients
+    ///     with a fixed event type for all events.
+    /// </summary>
+    /// <typeparam name="T">
+    ///     The type of the event object being streamed.
+    /// </typeparam>
+    /// <param name="endpoints">
+    ///     The <see cref="IEndpointRouteBuilder"/> to add the route to.
+    /// </param>
+    /// <param name="pattern">
+    ///     The URL pattern for the endpoint (e.g., <c>"/api/events"</c>).
+    /// </param>
+    /// <param name="eventType">
+    ///     The fixed SSE "event" type string used for all events (e.g., "heartbeat", "notification").
+    /// </param>
+    /// <returns>
+    ///     A <see cref="RouteHandlerBuilder"/> that can be used to further configure the endpoint (e.g., adding authorization).
+    /// </returns>
+    /// <remarks>
+    ///     <para>
+    ///         This is the simplest overload for streams where all events share the same type.
+    ///         The entire event object is serialized as JSON using camelCase property naming.
+    ///     </para>
+    ///     <para>
+    ///         On .NET 10+, this uses the optimized <c>TypedResults.ServerSentEvents</c> overload
+    ///         that accepts a fixed event type, avoiding per-event SseItem allocation.
+    ///     </para>
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    ///         // All events will have event type "heartbeat"
+    ///         app.MapSse&lt;HeartbeatEvent&gt;("/api/heartbeat", "heartbeat");
+    ///     </code>
+    /// </example>
+    public static RouteHandlerBuilder MapSse<T>(this IEndpointRouteBuilder endpoints, string pattern,
+        string eventType) where T : class
     {
-        return endpoints.MapSse(pattern, static item => item, eventTypeSelector);
+#if NET10_0_OR_GREATER
+    return MapSseNet10FixedType<T>(endpoints, pattern, eventType);
+#else
+        return MapSseFallback<T>(endpoints, pattern, item => item, _ => eventType);
+#endif
     }
 
 #if NET10_0_OR_GREATER
@@ -162,6 +205,25 @@ public static class SseExtensions
         });
     }
 
+    /// <summary>
+    ///     .NET 10+ optimized implementation for fixed event types.
+    ///     Uses the simpler TypedResults.ServerSentEvents overload that accepts a fixed event type.
+    /// </summary>
+    private static RouteHandlerBuilder MapSseNet10FixedType<T>(
+        IEndpointRouteBuilder endpoints,
+        string pattern,
+        string eventType) where T : class
+    {
+        return endpoints.MapGet(pattern, (ISseStream<T> stream, HttpContext context) =>
+        {
+            var clientId = Guid.NewGuid();
+            var reader = stream.Subscribe(clientId);
+            context.RequestAborted.Register(() => stream.Unsubscribe(clientId));
+
+            // Use the simplified overload - BCL handles SseItem wrapping
+            return TypedResults.ServerSentEvents(reader.ReadAllAsync(context.RequestAborted), eventType: eventType);
+        });
+    }
 #endif
 
 #if !NET10_0_OR_GREATER

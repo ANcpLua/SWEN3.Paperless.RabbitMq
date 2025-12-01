@@ -8,7 +8,7 @@
 
     <PackageId>SWEN3.Paperless.RabbitMq</PackageId>
     <Title>SWEN3.Paperless.RabbitMq - RabbitMQ Messaging with SSE Streaming &amp; AI Summarization</Title>
-    <Version>2.3.0</Version>
+    <Version>2.3.1</Version>
     <Authors>Alexander Nachtmann</Authors>
     <Copyright>Copyright © 2025 Alexander Nachtmann</Copyright>
 
@@ -46,6 +46,10 @@
 
   <ItemGroup>
     <PackageReference Include="RabbitMQ.Client" Version="7.2.0"/>
+    <PackageReference Update="Meziantou.Analyzer" Version="2.0.257">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
