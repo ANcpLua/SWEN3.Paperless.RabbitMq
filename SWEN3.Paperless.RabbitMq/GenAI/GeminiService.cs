@@ -14,7 +14,7 @@ public sealed partial class GeminiService : ITextSummarizer
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GeminiService> _logger;
-    private readonly GeminiOptions _options;
+    private readonly string _apiUrl;
 
     /// <summary>Initializes a new instance of <see cref="GeminiService" />.</summary>
     /// <param name="httpClient">HTTP client configured with resilience handlers.</param>
@@ -24,8 +24,9 @@ public sealed partial class GeminiService : ITextSummarizer
     {
         _httpClient = httpClient;
         _logger = logger;
-        _options = options.Value;
-        _httpClient.Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
+        var opts = options.Value;
+        _httpClient.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        _apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{opts.Model}:generateContent?key={opts.ApiKey}";
     }
 
     /// <summary>Generates a structured summary for the provided text using Gemini.</summary>
@@ -42,13 +43,11 @@ public sealed partial class GeminiService : ITextSummarizer
 
         var prompt = BuildPrompt(text);
         var body = BuildRequestBody(prompt);
-        var url =
-            $"https://generativelanguage.googleapis.com/v1beta/models/{_options.Model}:generateContent?key={_options.ApiKey}";
 
         try
         {
             using var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
+            var response = await _httpClient.PostAsync(_apiUrl, content, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
